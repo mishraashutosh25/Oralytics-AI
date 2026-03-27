@@ -105,18 +105,3 @@ coverage/
 *.pfx
 secrets/
 .secrets
-
-# ── Deployment ──
-.vercel
-.netlify
-.turbo
-.railway
-.render
-
-# ── Misc ──
-*.tmp
-*.temp
-*.bak
-*.orig
-*.patch
-.history/

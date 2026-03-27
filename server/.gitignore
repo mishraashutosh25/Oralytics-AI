@@ -1,0 +1,7 @@
+node_modules/
+.env
+public/resumes/
+public/uploads/
+*.log
+package-lock.json
+package.json
