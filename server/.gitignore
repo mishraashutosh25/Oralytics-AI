@@ -1,7 +1,46 @@
+# ══════════════════════════════════════
+#  Oralytics AI — Server .gitignore
+# ══════════════════════════════════════
+
+# ── Dependencies ──
 node_modules/
+
+# ── Environment Variables ──
 .env
+.env.local
+.env.production
+.env.staging
+
+# ── User Uploads ──
 public/resumes/
 public/uploads/
+public/temp/
+
+# ── Logs ──
+logs/
 *.log
-package-lock.json
-package.json
+npm-debug.log*
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+
+# ── Editor ──
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Build ──
+dist/
+build/
+
+# ── Cache ──
+.cache/
+*.tsbuildinfo
+
+# ── Security ──
+*.pem
+*.key
+*.cert
+secrets/
