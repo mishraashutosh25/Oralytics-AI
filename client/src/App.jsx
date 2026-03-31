@@ -21,7 +21,7 @@ import Analytics from './pages/Analytics'
 import ProfilePage from './pages/ProfilePage'
 import QuestionBank from './pages/QuestionBank'
 
-export const ServerURL = "http://localhost:8080"
+export const ServerURL = "https://oralytics-ai-server.onrender.com"
 
 function App() {
   const dispatch = useDispatch()
