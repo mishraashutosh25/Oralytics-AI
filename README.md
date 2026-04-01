@@ -1,6 +1,6 @@
 <div align="center">
   <img src="client/src/assets/logo.png" alt="Oralytics AI Logo" width="120"/>
-  <h1>Oralytics AI 🚀</h1>
+  <h1>Oralytics AI </h1>
   <p><strong>Next-Generation AI Interview & Placement Prep Platform</strong></p>
 
   [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
@@ -55,7 +55,7 @@ Our platform follows a robust Microservices-like pattern:
 
 ---
 
-## 🚀 Getting Started (Local Development)
+##  Getting Started (Local Development)
 
 ### 1. Requirements
 *   Node.js (v18+)
@@ -136,7 +136,7 @@ uvicorn app:app --reload
 ## 👨‍💻 Development Team
 
 Developed as a Final Year Capstone Project by:
-- **Yash Mishra** - Backend Architecture, Architecture Setup, & AI Implementations
+- **Ashutosh Mishra** - Backend Architecture, Architecture Setup, & AI Implementations
 
 ---
 
