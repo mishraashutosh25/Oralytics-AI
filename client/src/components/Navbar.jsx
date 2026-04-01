@@ -272,6 +272,7 @@ function Navbar() {
                     {/* Menu items */}
                     <div className="p-2">
                       {[
+                        ...(userData?.email === 'yashmishra77738@gmail.com' ? [{ icon: <FaCrown size={13} className="text-yellow-400" />, label: "Admin Dashboard", action: () => { navigate("/admin"); closeAll() } }] : []),
                         { icon: <FaUserAstronaut size={13} />, label: "My Profile",  action: () => { navigate("/profile"); closeAll() } },
                         { icon: <FaHistory size={13} />,       label: "My Sessions", action: () => { navigate("/my-sessions"); closeAll() } },
                         { icon: <BsBarChartFill size={13} />,  label: "Analytics",   action: () => { navigate("/analytics"); closeAll() } },
