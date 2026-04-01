@@ -284,34 +284,6 @@ export const checkUpiPayment = async (req, res) => {
   }
 }
 
-// ── POST /api/payment/confirm-upi ── (manual fallback)
-export const confirmUpiPayment = async (req, res) => {
-  try {
-    const { paymentDbId } = req.body
-    if (!paymentDbId) return res.status(400).json({ success: false, message: 'Payment ID missing' })
-
-    const payment = await Payment.findOne({
-      _id: paymentDbId, userId: req.userId, status: 'created', method: 'upi',
-    })
-    if (!payment) return res.status(404).json({ success: false, message: 'Not found or already processed' })
-
-    payment.razorpayPaymentId = `CONFIRMED_${Date.now()}`
-    payment.status = 'paid'
-    await payment.save()
-
-    const user = await User.findByIdAndUpdate(
-      req.userId, { $inc: { credits: payment.credits } }, { new: true }
-    )
-
-    res.json({
-      success: true, credits: user.credits,
-      payment: { plan: payment.plan, credits: payment.credits, amount: payment.amount },
-    })
-  } catch (error) {
-    console.error('Confirm UPI error:', error)
-    res.status(500).json({ success: false, message: 'Failed to confirm manual payment' })
-  }
-}
 
 // ── Razorpay Webhook ── (Production grade auto-fulfillment)
 export const razorpayWebhook = async (req, res) => {

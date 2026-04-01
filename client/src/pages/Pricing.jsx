@@ -58,10 +58,8 @@ export default function Pricing() {
   const [upi, setUpi] = useState(null)
   const [payStatus, setPayStatus] = useState('scanning') // scanning | detecting | paid
   const [copied, setCopied] = useState(false)
-  const [showConfirmBtn, setShowConfirmBtn] = useState(false)
   const pollRef = useRef(null)
   const pollCountRef = useRef(0)
-  const confirmTimerRef = useRef(null)
 
   useEffect(() => {
     axios.get(`${ServerURL}/api/payment/plans`).then(r => { if (r.data.success) setPlans(r.data.plans) }).catch(console.error)
@@ -129,35 +127,74 @@ export default function Pricing() {
       if (data.success) {
         setUpi(data.upi)
         setPayStatus('scanning')
-        setShowConfirmBtn(false)
-        // Switch to detecting after 3s, show confirm after 8s
+        // Switch to detecting after 3s
         setTimeout(() => setPayStatus('detecting'), 3000)
-        confirmTimerRef.current = setTimeout(() => setShowConfirmBtn(true), 8000)
-        if (data.upi.useRazorpayQr) startPolling(data.upi.paymentDbId)
+        
+        if (data.upi.useRazorpayQr) {
+          startPolling(data.upi.paymentDbId)
+        }
       }
     } catch (err) { alert('Failed to generate QR') }
     setLoading(null)
   }
 
-  // Manual confirm
-  const handleManualConfirm = async () => {
-    if (!upi) return
-    stopPolling()
-    setShowConfirmBtn(false)
+  const handleRazorpayPay = async (planId) => {
+    if (!userData) { navigate('/auth'); return }
+    setLoading(planId)
     try {
-      const { data } = await axios.post(`${ServerURL}/api/payment/confirm-upi`, { paymentDbId: upi.paymentDbId }, { withCredentials: true })
-      if (data.success) {
-        setPayStatus('paid')
-        setCredits(data.credits)
-        dispatch(setUserData({ ...userData, credits: data.credits }))
-        setTimeout(() => { setUpi(null); setShowSuccess(data.payment); setPayStatus('scanning') }, 1800)
-        axios.get(`${ServerURL}/api/payment/history`, { withCredentials: true })
-          .then(r => { if (r.data.success) setHistory(r.data.payments) })
+      const { data } = await axios.post(`${ServerURL}/api/payment/create-order`, { plan: planId }, { withCredentials: true })
+      if (!data.success) throw new Error(data.message)
+
+      const options = {
+        key: data.key,
+        amount: data.order.amount,
+        currency: data.order.currency,
+        name: 'Oralytics AI',
+        description: data.planLabel,
+        order_id: data.order.id,
+        prefill: {
+          name: userData.name || '',
+          email: userData.email || '',
+        },
+        theme: {
+          color: '#a78bfa'
+        },
+        handler: async function (response) {
+          try {
+            const verifyRes = await axios.post(`${ServerURL}/api/payment/verify`, {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            }, { withCredentials: true })
+            
+            if (verifyRes.data.success) {
+              setCredits(verifyRes.data.credits)
+              dispatch(setUserData({ ...userData, credits: verifyRes.data.credits }))
+              setShowSuccess(verifyRes.data.payment)
+              // Refresh history
+              axios.get(`${ServerURL}/api/payment/history`, { withCredentials: true })
+                .then(r => { if (r.data.success) setHistory(r.data.payments) })
+            }
+          } catch (err) {
+            alert('Payment verification failed!')
+          }
+        }
       }
-    } catch (err) { alert('Failed to confirm') }
+      
+      const rzp = new window.Razorpay(options)
+      rzp.on('payment.failed', function (res) {
+        alert('Payment failed. ' + res.error.description);
+      })
+      rzp.open()
+      
+    } catch (err) {
+      console.error(err)
+      alert('Failed to initiate Razorpay checkout')
+    }
+    setLoading(null)
   }
 
-  const closeUpi = () => { stopPolling(); if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current); setUpi(null); setPayStatus('scanning'); setShowConfirmBtn(false) }
+  const closeUpi = () => { stopPolling(); setUpi(null); setPayStatus('scanning'); }
   const copyId = (id) => { navigator.clipboard.writeText(id); setCopied(true); setTimeout(() => setCopied(false), 2000) }
 
   return (
@@ -209,14 +246,14 @@ export default function Pricing() {
               Fuel Your{" "}
               <span style={{ background: 'linear-gradient(90deg,#a78bfa,#38bdf8,#34d399)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Interview Prep</span>
             </h1>
-            <p className='text-white/30 text-sm max-w-xl mx-auto'>Scan QR → Pay via UPI → Credits added automatically. No clicks needed.</p>
+            <p className='text-white/30 text-sm max-w-xl mx-auto'>Pay seamlessly using Cards, Net Banking, Wallets, or UPI. Credits added instantly.</p>
             <div className='flex justify-center mt-5'>
               <div className='flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-[#0b0b0b] border border-white/[0.07]'>
-                <BsQrCode size={16} className='text-emerald-400' />
-                <span className='text-xs text-white/40'>Pay via</span>
-                <span className='text-xs font-bold text-white/70'>UPI QR Code</span>
+                <BsShieldCheck size={16} className='text-emerald-400' />
+                <span className='text-xs text-white/40'>Secure Pay via</span>
+                <span className='text-xs font-bold text-white/70'>Razorpay</span>
                 <span className='text-[10px] text-white/20'>•</span>
-                <span className='text-[10px] text-white/30'>GPay · PhonePe · Paytm</span>
+                <span className='text-[10px] text-white/30'>Cards · UPI · Wallets</span>
               </div>
             </div>
           </FadeUp>
@@ -249,11 +286,18 @@ export default function Pricing() {
                       <div className='space-y-3 mb-8'>
                         {cfg.features.map((f, fi) => <div key={fi} className='flex items-center gap-2.5'><BsCheckCircleFill size={12} className={cm.text} /><span className='text-xs text-white/50'>{f}</span></div>)}
                       </div>
-                      <motion.button onClick={() => handleUpiPay(plan.id)} disabled={loading === plan.id}
-                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                        className={`w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl ${cm.btn} text-black font-bold text-sm cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_25px_rgba(167,139,250,0.15)]`}>
-                        {loading === plan.id ? <div className='w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin' /> : <><BsQrCode size={15} /> Pay {plan.price} via UPI <BsArrowRight size={12} /></>}
-                      </motion.button>
+                      <div className='flex flex-col gap-2'>
+                        <motion.button onClick={() => handleRazorpayPay(plan.id)} disabled={loading === plan.id}
+                          whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                          className={`w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl ${cm.btn} text-black font-bold text-sm cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_25px_rgba(167,139,250,0.15)]`}>
+                          {loading === plan.id ? <div className='w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin' /> : <><BsLightningChargeFill size={15} /> Pay {plan.price} Now <BsArrowRight size={12} /></>}
+                        </motion.button>
+                        <motion.button onClick={() => handleUpiPay(plan.id)} disabled={loading === plan.id}
+                          whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                          className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-white/60 text-xs font-semibold cursor-pointer hover:bg-white/[0.08] hover:text-white transition-all`}>
+                          <BsQrCode size={13} /> Alternative QR Pay
+                        </motion.button>
+                      </div>
                     </div>
                   </motion.div>
                 )
@@ -265,7 +309,7 @@ export default function Pricing() {
           <FadeUp delay={0.14} className='mb-16'>
             <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
               {[
-                { icon: <BsShieldCheck size={18} />, t: 'Secure UPI', d: 'Scan & pay with any UPI app', c: 'emerald' },
+                { icon: <BsShieldCheck size={18} />, t: 'Secure Payment', d: 'Razorpay encrypted checkout', c: 'emerald' },
                 { icon: <BsLightningChargeFill size={18} />, t: 'Auto-Detect', d: 'Payment detected automatically', c: 'amber' },
                 { icon: <BsStarFill size={18} />, t: 'No Expiry', d: 'Credits never expire', c: 'violet' },
                 { icon: <BsTrophyFill size={18} />, t: 'Refund', d: '7-day money-back guarantee', c: 'sky' },
@@ -299,9 +343,9 @@ export default function Pricing() {
               <div className='flex items-center gap-2 mb-6'><HiSparkles size={14} className='text-violet-400' /><p className='text-[11px] text-white/30 uppercase tracking-widest font-medium'>FAQ</p></div>
               <div className='grid md:grid-cols-2 gap-6'>
                 {[
-                  { q: 'How does payment work?', a: 'Scan QR with any UPI app. Payment is auto-detected — credits added instantly.' },
+                  { q: 'How does payment work?', a: 'Use Razorpay checkout for Cards, Wallets, and UPI. Your credits are added instantly on success.' },
                   { q: 'Do credits expire?', a: "Never. Use them at your own pace." },
-                  { q: 'Is it secure?', a: 'UPI is bank-grade encrypted. We never see your bank details.' },
+                  { q: 'Is it secure?', a: 'Your payment is processed by bank-grade encrypted systems. We never store or see your payment details.' },
                   { q: 'Free credits?', a: 'Every new account gets 100 free credits!' },
                 ].map((f, i) => <div key={i} className='p-4 rounded-xl bg-white/[0.02] border border-white/[0.05]'><p className='text-sm font-semibold text-white/60 mb-2'>{f.q}</p><p className='text-[11px] text-white/30'>{f.a}</p></div>)}
               </div>
@@ -375,7 +419,7 @@ export default function Pricing() {
                   </AnimatePresence>
 
                   {/* Status indicator */}
-                  {payStatus !== 'paid' && !showConfirmBtn && (
+                  {payStatus !== 'paid' && (
                     <div className={`flex items-center justify-center gap-3 p-3 rounded-xl border ${
                       payStatus === 'detecting'
                         ? 'bg-amber-500/[0.06] border-amber-500/15'
@@ -407,27 +451,6 @@ export default function Pricing() {
                         {copied ? <><BsCheckLg size={10} className='text-emerald-400' /> Copied</> : <><BsClipboard size={10} /> Copy</>}
                       </button>
                     </div>
-                  )}
-
-                  {/* Confirm payment — appears after 8 seconds */}
-                  {showConfirmBtn && payStatus !== 'paid' && (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className='space-y-2'>
-                      <div className='flex items-center gap-2 justify-center'>
-                        <div className='flex-1 h-px bg-emerald-500/20' />
-                        <span className='text-[10px] text-emerald-400/60 uppercase tracking-widest'>Payment Done?</span>
-                        <div className='flex-1 h-px bg-emerald-500/20' />
-                      </div>
-                      <motion.button
-                        onClick={handleManualConfirm}
-                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                        className='w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl
-                          bg-emerald-400 text-black font-bold text-sm cursor-pointer hover:bg-emerald-300
-                          transition-all shadow-[0_0_30px_rgba(52,211,153,0.25)]'>
-                        <BsCheckCircleFill size={16} />
-                        I've Completed the Payment
-                      </motion.button>
-                      <p className='text-[10px] text-white/20 text-center'>Click after you've paid via UPI to add credits instantly</p>
-                    </motion.div>
                   )}
                 </div>
               </div>
