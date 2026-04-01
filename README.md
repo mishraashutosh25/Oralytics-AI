@@ -33,11 +33,11 @@
 
 | Role-based AI Interview 🧠 | Premium Feedback Report 📈 |
 | :-------------------------: | :--------------------------: |
-| <img src="URL_TO_INTERVIEW_SCREENSHOT_HERE" alt="Interview Portal" width="100%"> | <img src="URL_TO_REPORT_SCREENSHOT_HERE" alt="Report Dash" width="100%"> |
+| <img src="docs/screenshots/interview.png" alt="Interview Portal" width="100%"> | <img src="docs/screenshots/report.png" alt="Report Dash" width="100%"> |
 
 | Admin Dashboard 👑 | Live Proctoring 👁️ |
 | :-------------------------: | :--------------------------: |
-| <img src="URL_TO_ADMIN_DASH_SCREENSHOT_HERE" alt="Admin" width="100%"> | <img src="URL_TO_PROCTORING_SCREENSHOT_HERE" alt="Proctoring" width="100%"> |
+| <img src="docs/screenshots/admin.png" alt="Admin Dashboard" width="100%"> | <img src="docs/screenshots/proctoring.png" alt="Proctoring System" width="100%"> |
 
 ---
 
