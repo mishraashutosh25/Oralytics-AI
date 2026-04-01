@@ -420,6 +420,16 @@ export default function Step3Report({ report, onRestart }) {
     }
   }
 
+  const hasAutoSaved = useRef(false)
+
+  useEffect(() => {
+    if (!saved && answers?.length > 0 && !hasAutoSaved.current) {
+      hasAutoSaved.current = true
+      handleSave()
+    }
+    // eslint-disable-next-line
+  }, [])
+
   return (
     <>
       <div className='relative min-h-screen bg-[#050505] text-white'

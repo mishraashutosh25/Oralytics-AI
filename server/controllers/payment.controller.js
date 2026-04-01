@@ -20,7 +20,9 @@ const getRazorpay = () => {
     })
   }
   return _razorpay
+  
 }
+
 
 // ── GET /api/payment/plans ──
 export const getPlans = (req, res) => {
@@ -307,6 +309,58 @@ export const confirmUpiPayment = async (req, res) => {
     })
   } catch (error) {
     console.error('Confirm UPI error:', error)
-    res.status(500).json({ success: false, message: 'Failed to confirm' })
+    res.status(500).json({ success: false, message: 'Failed to confirm manual payment' })
+  }
+}
+
+// ── Razorpay Webhook ── (Production grade auto-fulfillment)
+export const razorpayWebhook = async (req, res) => {
+  try {
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET;
+    const signature = req.headers['x-razorpay-signature'];
+    
+    // Verify Webhook signature
+    const expectedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(JSON.stringify(req.body))
+      .digest('hex');
+
+    if (expectedSignature !== signature) {
+      return res.status(400).send('Invalid webhook signature');
+    }
+
+    const { event, payload } = req.body;
+
+    if (event === 'payment.captured' || event === 'order.paid') {
+      const paymentEntity = payload.payment.entity;
+      // Get the order_id or notes provided during order creation
+      const razorpayOrderId = paymentEntity.order_id || payload.order?.entity?.id;
+      
+      const payment = await Payment.findOne({ 
+        $or: [
+          { razorpayOrderId: razorpayOrderId },
+          { razorpayOrderId: paymentEntity.notes?.qr_id } // if it's a QR payment
+        ]
+      });
+
+      if (payment && payment.status !== 'paid') {
+        payment.status = 'paid';
+        payment.razorpayPaymentId = paymentEntity.id;
+        await payment.save();
+
+        if (payment.userId) {
+          await User.findByIdAndUpdate(
+            payment.userId,
+            { $inc: { credits: payment.credits } },
+            { new: true }
+          );
+        }
+      }
+    }
+    
+    return res.status(200).send('Webhook verified and processed');
+  } catch (err) {
+    console.error('Webhook error:', err);
+    return res.status(500).send('Webhook error');
   }
 }

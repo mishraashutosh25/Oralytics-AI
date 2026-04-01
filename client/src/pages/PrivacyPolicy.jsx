@@ -9,6 +9,7 @@ import {
 } from 'react-icons/bs'
 import logo from "../assets/logo.png";
 import { HiSparkles } from 'react-icons/hi'
+import Footer from '../components/Footer'
 
 const FadeUp = ({ children, delay = 0, className = '' }) => {
   const ref = useRef(null)
@@ -378,6 +379,7 @@ function PrivacyPolicy() {
         </FadeUp>
 
       </main>
+      <Footer />
     </div>
   )
 }

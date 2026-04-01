@@ -1,14 +1,24 @@
 import React, { useState, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
+import { ServerURL } from '../App'
+import { useDispatch, useSelector } from 'react-redux'
+import { setUserData } from '../redux/userSlice'
 import Footer from '../components/Footer'
 import { questions, COMPANIES, TOPICS, DIFFICULTIES } from '../data/dsaQuestions'
 import {
   BsArrowLeft, BsSearch, BsFilterLeft, BsBookmarkFill, BsBookmark,
   BsLightningChargeFill, BsStarFill, BsChevronDown, BsBuilding,
   BsCalendarCheck, BsCheckCircleFill, BsXCircleFill, BsBarChartFill,
-  BsArrowRight, BsGraphUp
+  BsArrowRight, BsGraphUp, BsShieldLockFill, BsMicrosoft
 } from 'react-icons/bs'
+import { 
+  SiLeetcode, SiGeeksforgeeks, SiGoogle, SiAmazon, SiMeta, SiApple, 
+  SiNetflix, SiUber, SiAdobe, SiGoldmansachs, SiFlipkart, SiWalmart, 
+  SiInfosys, SiTcs, SiWipro, SiPaytm, SiPhonepe, SiRazorpay, SiSwiggy, 
+  SiZomato, SiAtlassian 
+} from 'react-icons/si'
 import { HiSparkles } from 'react-icons/hi'
 
 const FadeUp = ({ children, delay = 0, className = '' }) => (
@@ -32,19 +42,95 @@ const TOPIC_EMOJIS = {
   'Sorting & Searching': '🔍', 'Recursion & Backtracking': '🔄', 'Hashing': '#️⃣'
 }
 
-const COMPANY_LOGOS = {
-  'Google': '🔵', 'Amazon': '🟠', 'Microsoft': '🟦', 'Meta': '🔷', 'Apple': '🍎',
-  'Netflix': '🔴', 'Uber': '⬛', 'Adobe': '🟥', 'Goldman Sachs': '🏦', 'Flipkart': '💛',
-  'Walmart': '🟡', 'Infosys': '🔵', 'TCS': '🟣', 'Wipro': '🌻', 'Paytm': '💙',
-  'PhonePe': '💜', 'Razorpay': '💎', 'Swiggy': '🧡', 'Zomato': '❤️', 'Atlassian': '🔹'
+const COMPANY_ICONS = {
+  'Google': <SiGoogle className='text-[#4285F4]' />,
+  'Amazon': <SiAmazon className='text-[#FF9900]' />,
+  'Microsoft': <BsMicrosoft className='text-[#00A4EF]' />,
+  'Meta': <SiMeta className='text-[#0668E1]' />,
+  'Apple': <SiApple className='text-gray-200' />,
+  'Netflix': <SiNetflix className='text-[#E50914]' />,
+  'Uber': <SiUber className='text-white' />,
+  'Adobe': <SiAdobe className='text-[#FF0000]' />,
+  'Goldman Sachs': <SiGoldmansachs className='text-[#7399C6]' />,
+  'Flipkart': <SiFlipkart className='text-[#2874F0]' />,
+  'Walmart': <SiWalmart className='text-[#0071CE]' />,
+  'Infosys': <SiInfosys className='text-[#007CC3]' />,
+  'TCS': <SiTcs className='text-white' />,
+  'Wipro': <SiWipro className='text-[#DFE1E1]' />,
+  'Paytm': <SiPaytm className='text-[#00BAF2]' />,
+  'PhonePe': <SiPhonepe className='text-[#5E23ED]' />,
+  'Razorpay': <SiRazorpay className='text-[#02042B]' />,
+  'Swiggy': <SiSwiggy className='text-[#FC8019]' />,
+  'Zomato': <SiZomato className='text-[#CB202D]' />,
+  'Atlassian': <SiAtlassian className='text-[#0052CC]' />
 }
 
 const TOP_COMPANIES = ['Google', 'Amazon', 'Microsoft', 'Meta', 'Apple', 'Uber', 'Adobe', 'Flipkart', 'Goldman Sachs', 'Paytm']
 
 const PER_PAGE = 20
 
+const OVERRIDE_URLS = {
+  // --- Exact GfG problems with strict IDs ---
+  'M-Coloring Problem': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/m-coloring-problem-1587115620/1' },
+  'Painters Partition Problem': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/the-painters-partition-problem1535/1' },
+  'Detect Cycle in Undirected Graph': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/detect-cycle-in-an-undirected-graph/1' },
+  'Power Set': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/power-set4302/1' },
+  'Fractional Knapsack': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/fractional-knapsack-1587115620/1' },
+  'Matrix Chain Multiplication': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/matrix-chain-multiplication0303/1' },
+  'Egg Drop Problem': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/egg-dropping-puzzle-1587115620/1' },
+  'Alien Dictionary': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/alien-dictionary/1' },
+  'Count Inversions (Merge Sort)': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/inversion-of-array-1587115620/1' },
+  'Topological Sort (Kahn\'s)': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/topological-sort/1' },
+  'Minimum Spanning Tree (Prim\'s)': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/minimum-spanning-tree/1' },
+  'Allocate Minimum Pages': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/allocate-minimum-number-of-pages0937/1' },
+  '0/1 Knapsack': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/0-1-knapsack-problem0945/1' },
+  
+  // -- specific added ones --
+  'Stock Buy and Sell': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/stock-buy-and-sell-1587115621/1' },
+  'Minimum Jumps': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/minimum-number-of-jumps-1587115620/1' },
+  'Subarray with given sum': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/subarray-with-given-sum-1587115621/1' },
+  'Missing number in array': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/missing-number-in-array1416/1' },
+  'Minimize the Heights II': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/minimize-the-heights3351/1' },
+  'Detect Loop in linked list': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/detect-loop-in-linked-list/1' },
+  'Parenthesis Checker': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/parenthesis-checker2744/1' },
+  'Find duplicates in an array': { platform: 'GFG', url: 'https://www.geeksforgeeks.org/problems/find-duplicates-in-an-array/1' },
+
+
+  // --- Exact Leetcode Overrides ---
+  'Implement strStr() / KMP': { platform: 'LeetCode', url: 'https://leetcode.com/problems/find-the-index-of-the-first-occurrence-in-a-string/' },
+  'String to Integer (atoi)': { platform: 'LeetCode', url: 'https://leetcode.com/problems/string-to-integer-atoi/' },
+  'Maximum Subarray (Kadane\'s)': { platform: 'LeetCode', url: 'https://leetcode.com/problems/maximum-subarray/' },
+  'Sort List (Merge Sort)': { platform: 'LeetCode', url: 'https://leetcode.com/problems/sort-list/' },
+  'Sort Colors (Dutch National Flag)': { platform: 'LeetCode', url: 'https://leetcode.com/problems/sort-colors/' },
+  'Binary Tree Zigzag Level Order': { platform: 'LeetCode', url: 'https://leetcode.com/problems/binary-tree-zigzag-level-order-traversal/' },
+  'Aggressive Cows / Magnetic Balls': { platform: 'LeetCode', url: 'https://leetcode.com/problems/magnetic-force-between-two-balls/' },
+  'Count Primes (Sieve)': { platform: 'LeetCode', url: 'https://leetcode.com/problems/count-primes/' },
+  'Find First and Last Position': { platform: 'LeetCode', url: 'https://leetcode.com/problems/find-first-and-last-position-of-element-in-sorted-array/' },
+  'Two Sum (HashMap)': { platform: 'LeetCode', url: 'https://leetcode.com/problems/two-sum/' },
+  'Contiguous Array (0s and 1s)': { platform: 'LeetCode', url: 'https://leetcode.com/problems/contiguous-array/' },
+  'Linked List Cycle II (Find Start)': { platform: 'LeetCode', url: 'https://leetcode.com/problems/linked-list-cycle-ii/' },
+  'Word Search II (Trie + Backtrack)': { platform: 'LeetCode', url: 'https://leetcode.com/problems/word-search-ii/' },
+  'Course Schedule (Cycle Detection)': { platform: 'LeetCode', url: 'https://leetcode.com/problems/course-schedule/' },
+};
+
+const getProblemPlatform = (title) => {
+  if (OVERRIDE_URLS[title]) {
+    return OVERRIDE_URLS[title];
+  }
+
+  const t = title.toLowerCase();
+  
+  // Clean title: remove text in parentheses like "(Kadane's)" or "(Merge Sort)"
+  const cleanTitle = t.replace(/\([^)]*\)/g, '').trim();
+  // slugify
+  let slug = cleanTitle.replace(/[\s/]+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  return { platform: 'LeetCode', url: `https://leetcode.com/problems/${slug}/` };
+}
+
 export default function QuestionBank() {
   const navigate = useNavigate()
+  const dispatch = useDispatch()
+  const { userData } = useSelector(state => state.user)
   const [search, setSearch] = useState('')
   const [selectedTopic, setSelectedTopic] = useState('All')
   const [selectedDifficulty, setSelectedDifficulty] = useState('All')
@@ -58,7 +144,32 @@ export default function QuestionBank() {
   const [showHint, setShowHint] = useState(null)
   const [page, setPage] = useState(1)
   const [showFilters, setShowFilters] = useState(false)
+  const [unlocked, setUnlocked] = useState(false)
+  const [unlockLoading, setUnlockLoading] = useState(false)
+  const [unlockError, setUnlockError] = useState(null)
   const topRef = useRef(null)
+
+  const handleUnlock = async () => {
+    setUnlockLoading(true)
+    setUnlockError(null)
+    try {
+      const res = await axios.post(`${ServerURL}/api/credits/use-feature`, { feature: 'Company Questions' }, { withCredentials: true })
+      if(res.data.success) {
+        setUnlocked(true)
+        if (res.data.credits !== undefined && userData) {
+           dispatch(setUserData({ ...userData, credits: res.data.credits }))
+        }
+      }
+    } catch(e) {
+      if(e.response?.status === 402) {
+         setUnlockError('PAYWALL')
+      } else {
+         setUnlockError(e.response?.data?.message || 'Failed to unlock')
+      }
+    } finally {
+      setUnlockLoading(false)
+    }
+  }
 
   const toggleBookmark = (id) => {
     const next = bookmarks.includes(id) ? bookmarks.filter(b => b !== id) : [...bookmarks, id]
@@ -163,7 +274,7 @@ export default function QuestionBank() {
               DSA Question Bank
             </h1>
             <p className='text-white/30 text-sm max-w-xl leading-relaxed'>
-              200+ most-asked DSA questions from top tech companies — Google, Amazon, Meta, Microsoft & more.
+              Most-asked DSA questions from top tech companies (2023–2025) — Google, Amazon, Meta, Microsoft & more.
               Filtered by topic, company, year & difficulty.
             </p>
           </FadeUp>
@@ -287,7 +398,7 @@ export default function QuestionBank() {
                             flex items-center gap-1.5
                             ${selectedCompany === c ? 'bg-violet-500/10 border-violet-500/20 text-violet-400'
                               : 'bg-white/[0.03] border-white/[0.06] text-white/30 hover:text-white/50'}`}>
-                          <span>{COMPANY_LOGOS[c]}</span> {c}
+                          <span className='text-[13px] flex items-center justify-center opacity-90'>{COMPANY_ICONS[c]}</span> {c}
                           <span className='text-[9px] opacity-40'>({companyCounts[c]})</span>
                         </button>
                       ))}
@@ -361,8 +472,38 @@ export default function QuestionBank() {
 
           {/* ── Question Cards ── */}
           {paginated.length > 0 ? (
-            <div className='space-y-3 mb-8'>
-              <AnimatePresence mode='popLayout'>
+            <div className='mb-8 relative'>
+              {!unlocked && (
+                <div className='absolute z-10 inset-0 flex items-start justify-center pt-24 backdrop-blur-[6px] bg-[#030303]/40 rounded-2xl'>
+                  <div className='p-6 bg-[#0c0c0c] border border-white/10 rounded-2xl w-full max-w-sm text-center shadow-[0_0_60px_rgba(139,92,246,0.15)]'>
+                    <div className='w-14 h-14 bg-violet-500/10 border border-violet-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-violet-400'>
+                      <BsShieldLockFill size={28} />
+                    </div>
+                    <h3 className='text-lg font-bold text-white mb-2 qb-title'>Unlock Question Bank</h3>
+                    <p className='text-xs text-white/50 mb-6'>Access 200+ curated DSA questions asked in top tech companies like Google, Meta & Amazon. Costs 5 credits.</p>
+                    
+                    {unlockError === 'PAYWALL' ? (
+                      <div className='mb-2 text-center'>
+                        <p className='text-red-400 text-[11px] mb-3 font-medium'>Insufficient credits (Need 5)</p>
+                        <button onClick={() => navigate('/credits')} className='w-full py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-amber-500 text-white font-bold text-xs shadow-[0_0_15px_rgba(239,68,68,0.4)] hover:shadow-[0_0_25px_rgba(239,68,68,0.6)] transition-all'>
+                          Upgrade to Premium
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        {unlockError && <p className='text-red-400 text-[10px] mb-3'>{unlockError}</p>}
+                        <button onClick={handleUnlock} disabled={unlockLoading}
+                          className='w-full py-3 rounded-xl bg-violet-500 text-white font-bold text-sm hover:bg-violet-400 transition cursor-pointer disabled:opacity-50'>
+                          {unlockLoading ? 'Unlocking...' : 'Unlock Now - 5 Credits'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              <div className={`space-y-3 ${!unlocked ? 'opacity-30 pointer-events-none select-none h-[600px] overflow-hidden' : ''}`}>
+                <AnimatePresence mode='popLayout'>
                 {paginated.map((q, i) => {
                   const dc = DIFF_COLORS[q.difficulty]
                   return (
@@ -395,7 +536,7 @@ export default function QuestionBank() {
 
                             <div className='flex items-center gap-3 flex-wrap'>
                               <span className='flex items-center gap-1.5 text-[11px] text-white/35'>
-                                <span>{COMPANY_LOGOS[q.company] || '🏢'}</span>
+                                <span className='text-[15px] flex items-center justify-center opacity-90 bg-white/5 p-1 rounded-md border border-white/5'>{COMPANY_ICONS[q.company]}</span>
                                 <span className='font-medium'>{q.company}</span>
                               </span>
                               <span className='flex items-center gap-1 text-[11px] text-white/25'>
@@ -431,6 +572,20 @@ export default function QuestionBank() {
                                 text-white/30 hover:text-white/60 cursor-pointer transition'>
                               {showHint === q.id ? 'Hide' : '💡 Hint'}
                             </button>
+                            
+                            <div className='flex items-center gap-1 mt-auto'>
+                              {getProblemPlatform(q.title).platform === 'LeetCode' ? (
+                                <a href={getProblemPlatform(q.title).url} target='_blank' rel='noreferrer'
+                                  className='p-1.5 rounded-md bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 transition' title="Solve on LeetCode">
+                                  <SiLeetcode size={12} />
+                                </a>
+                              ) : (
+                                <a href={getProblemPlatform(q.title).url} target='_blank' rel='noreferrer'
+                                  className='p-1.5 rounded-md bg-green-500/10 text-green-400 hover:bg-green-500/20 transition' title="Solve on GeeksforGeeks">
+                                  <SiGeeksforgeeks size={12} />
+                                </a>
+                              )}
+                            </div>
                           </div>
                         </div>
 
@@ -456,6 +611,7 @@ export default function QuestionBank() {
                   )
                 })}
               </AnimatePresence>
+              </div>
             </div>
           ) : (
             <FadeUp className='mb-8'>
@@ -519,7 +675,9 @@ export default function QuestionBank() {
                       ${selectedCompany === c
                         ? 'bg-violet-500/10 border-violet-500/20'
                         : 'bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04]'}`}>
-                    <span className='text-2xl block mb-2'>{COMPANY_LOGOS[c]}</span>
+                    <div className='flex justify-center mb-3 drop-shadow'>
+                      <span className='text-[32px] opacity-90'>{COMPANY_ICONS[c]}</span>
+                    </div>
                     <p className='text-xs font-semibold text-white/70 mb-0.5'>{c}</p>
                     <p className='text-[10px] text-white/25'>{companyCounts[c]} questions</p>
                   </button>

@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from "react";
 import Footer from "../components/Footer";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import { setUserData } from "../redux/userSlice";
 import {
   BsArrowRight, BsArrowLeft, BsCheckCircleFill, BsXCircleFill,
   BsLightningChargeFill, BsGraphUp, BsPersonLinesFill,
@@ -332,6 +334,8 @@ const CONFIDENCE_CONFIG = {
 // ════════════════════════════════════════════════════════════════════════════════
 export default function PlacementPredictor() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { userData } = useSelector((s) => s.user);
 
   const [form, setForm] = useState({
     age: "", gender: "Male", degree: "B.Tech", branch: "CSE",
@@ -370,6 +374,7 @@ export default function PlacementPredictor() {
       const BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
       const res  = await fetch(`${BASE}/api/placement/predict`, {
         method:  "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           age:                  Number(form.age),
@@ -388,8 +393,15 @@ export default function PlacementPredictor() {
         }),
       });
       const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.message || "Prediction failed");
+      if (!res.ok || !json.success) {
+        if (res.status === 402) return setApiErr("PAYWALL");
+        if (res.status === 401) return navigate("/auth");
+        throw new Error(json.message || "Prediction failed");
+      }
       setResult(json.data);
+      if (json.credits !== undefined && userData) {
+         dispatch(setUserData({ ...userData, credits: json.credits }));
+      }
       setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 120);
     } catch (err) {
       setApiErr(err.message || "Could not reach the server. Make sure Node.js and FastAPI are both running.");
@@ -636,9 +648,22 @@ export default function PlacementPredictor() {
 
                   {/* Error */}
                   <AnimatePresence>
-                    {apiErr && (
+                    {apiErr === 'PAYWALL' ? (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                        className='bg-red-500/10 border border-red-500/20 rounded-2xl p-5 text-center mt-6'>
+                        <div className='w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-3 shadow-[0_0_15px_rgba(239,68,68,0.3)]'>
+                          <BsShieldCheck size={20} className='text-red-400' />
+                        </div>
+                        <p className='text-white font-bold text-sm mb-1'>Insufficient Credits</p>
+                        <p className='text-[11px] text-white/50 mb-4 px-4'>You need 15 credits for a Placement Prediction. Upgrade your plan to unlock more predictions.</p>
+                        <button onClick={() => navigate('/credits')} type="button"
+                          className='w-full py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-amber-500 text-white font-bold text-xs shadow-[0_0_15px_rgba(239,68,68,0.4)] hover:shadow-[0_0_25px_rgba(239,68,68,0.6)] transition-all'>
+                          Upgrade to Premium
+                        </button>
+                      </motion.div>
+                    ) : apiErr && (
                       <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                        className="flex items-start gap-3 p-4 rounded-xl text-sm text-red-400"
+                        className="flex items-start gap-3 p-4 rounded-xl text-sm text-red-400 mt-6"
                         style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.2)" }}>
                         <BsExclamationCircleFill size={14} className="mt-0.5 flex-shrink-0"/>
                         {apiErr}

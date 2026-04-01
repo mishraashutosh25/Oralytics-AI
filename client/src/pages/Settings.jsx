@@ -271,7 +271,16 @@ function Settings() {
     try {
       const res = await axios.post(ServerURL + '/api/interview/analyze-resume', {}, { withCredentials: true })
       setAnalysis(res.data.analysis)
-    } catch (e) { setAnalyzeError(e.response?.data?.message || "Analysis failed. Try again.") }
+      if (res.data.credits !== undefined && userData) {
+         dispatch(setUserData({ ...userData, credits: res.data.credits }))
+      }
+    } catch (e) {
+      if (e.response?.status === 402) {
+         setAnalyzeError('PAYWALL')
+      } else {
+         setAnalyzeError(e.response?.data?.message || "Analysis failed. Try again.") 
+      }
+    }
     finally { setAnalyzing(false) }
   }
 
@@ -612,7 +621,20 @@ function Settings() {
 
                         {/* Error */}
                         <AnimatePresence>
-                          {analyzeError && (
+                          {analyzeError === 'PAYWALL' ? (
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                              className='bg-red-500/10 border border-red-500/20 rounded-2xl p-5 text-center mb-5'>
+                              <div className='w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-3 shadow-[0_0_15px_rgba(239,68,68,0.3)]'>
+                                <BsShieldFill size={20} className='text-red-400' />
+                              </div>
+                              <p className='text-white font-bold text-sm mb-1'>Insufficient Credits</p>
+                              <p className='text-[11px] text-white/50 mb-4 px-4'>You need 10 credits to analyze a Resume. Upgrade your plan to unlock AI features.</p>
+                              <button onClick={() => navigate('/credits')}
+                                className='w-full py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-amber-500 text-white font-bold text-xs shadow-[0_0_15px_rgba(239,68,68,0.4)] hover:shadow-[0_0_25px_rgba(239,68,68,0.6)] transition-all'>
+                                Upgrade to Premium
+                              </button>
+                            </motion.div>
+                          ) : analyzeError && (
                             <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                               className='flex items-start gap-3 px-4 py-3.5 rounded-xl bg-red-500/5
                                 border border-red-500/20 text-red-400 text-xs mb-5'>

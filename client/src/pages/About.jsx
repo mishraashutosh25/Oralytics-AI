@@ -9,6 +9,7 @@ import {
 import logo from "../assets/logo.png";
 import ashutoshImg from '../assets/ashutosh.png'
 import { HiSparkles } from 'react-icons/hi'
+import Footer from '../components/Footer'
 
 const FadeUp = ({ children, delay = 0, className = '' }) => {
         const ref = useRef(null)
@@ -286,6 +287,7 @@ function About() {
                                 </FadeUp>
 
                         </main>
+                        <Footer />
                 </div>
         )
 }

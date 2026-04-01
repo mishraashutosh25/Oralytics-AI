@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { Route, Routes, useLocation } from 'react-router-dom'
 import Auth from './pages/Auth'
 import axios from 'axios'
 import { useDispatch } from 'react-redux'
@@ -20,8 +20,18 @@ import Pricing from './pages/Pricing'
 import Analytics from './pages/Analytics'
 import ProfilePage from './pages/ProfilePage'
 import QuestionBank from './pages/QuestionBank'
-
+import MySessions from './pages/MySessions'
+import Blog from './pages/Blog'
+import ApiDocs from './pages/ApiDocs'
 export const ServerURL = "http://localhost:8080"
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
 
 function App() {
   const dispatch = useDispatch()
@@ -45,8 +55,10 @@ function App() {
   }, [dispatch])
 
   return (
-    <Routes>
-      <Route path="/"              element={<Landing />} />
+    <>
+      <ScrollToTop />
+      <Routes>
+        <Route path="/"              element={<Landing />} />
       <Route path='/about'         element={<About />} />
       <Route path='/careers'       element={<Careers />} />
       <Route path="/privacy"       element={<PrivacyPolicy />} />
@@ -54,6 +66,8 @@ function App() {
       <Route path="/help"          element={<HelpCentre />} />
       <Route path="/settings"      element={<Settings />} />
       <Route path="/changelog"     element={<Changelog />} />
+      <Route path="/blog"          element={<Blog />} />
+      <Route path="/docs"          element={<ApiDocs />} />
       <Route path='/interview'     element={<InterviewPage />} />
       <Route path='/live-interview' element={<LiveVideoInterview />} />
       <Route path="/predictor"     element={<PlacementPredictor />} />
@@ -61,9 +75,11 @@ function App() {
       <Route path='/analytics' element={<Analytics />} />
       <Route path='/profile'        element={<ProfilePage />} />
       <Route path='/question-bank'   element={<QuestionBank />} />
+      <Route path='/my-sessions'   element={<MySessions />} />
       <Route path='/credits'         element={<Pricing />} />
       <Route path='/auth'          element={<Auth />} />
-    </Routes>
+      </Routes>
+    </>
   )
 }
 

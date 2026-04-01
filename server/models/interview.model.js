@@ -11,7 +11,7 @@ const interviewSchema = new mongoose.Schema({
 
   role:       { type: String, required: true },
   difficulty: { type: String, enum: ["easy", "medium", "hard"], default: "medium" },
-  mode:       { type: String, enum: ["text", "voice"], default: "text" },
+  mode:       { type: String, enum: ["text", "voice", "video"], default: "text" },
   duration:   { type: Number, default: 20 },
   resumeUsed: { type: Boolean, default: false },
 

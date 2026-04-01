@@ -545,9 +545,10 @@ export default function Step2Interview({ interviewData, onComplete }) {
         `}</style>
 
         <div className='pointer-events-none fixed inset-0 overflow-hidden'>
-          <div className='absolute w-[400px] h-[400px] bg-emerald-500 opacity-[0.04] blur-[150px] rounded-full -top-32 -right-32' />
+          <div className='absolute w-[600px] h-[600px] bg-violet-600 opacity-[0.05] blur-[180px] rounded-full top-[-10%] right-[-10%]' />
+          <div className='absolute w-[500px] h-[500px] bg-cyan-600 opacity-[0.05] blur-[150px] rounded-full bottom-[-10%] left-[-10%]' />
           <div className='pointer-events-none absolute inset-0'
-            style={{ backgroundImage: 'radial-gradient(circle,rgba(255,255,255,0.02) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
+            style={{ backgroundImage: 'radial-gradient(circle,rgba(255,255,255,0.012) 1px,transparent 1px)', backgroundSize: '36px 36px' }} />
         </div>
 
         {/* ── AI Avatar — Fixed Top Right ── */}
@@ -585,57 +586,63 @@ export default function Step2Interview({ interviewData, onComplete }) {
         </div>
 
         {/* ── Integrity Badge — Top Left ── */}
-        <div className='fixed top-20 left-4 z-40'>
+        <div className='fixed top-20 left-6 z-40 hidden md:block'>
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[10px] font-medium
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-[11px] font-bold tracking-wide backdrop-blur-md shadow-2xl
               ${warningCount === 0
-                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                : warningCount === 1 ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
-                : 'bg-red-500/10 border-red-500/20 text-red-400'}`}
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 shadow-emerald-500/5'
+                : warningCount === 1 ? 'bg-amber-500/10 border-amber-500/20 text-amber-400 shadow-amber-500/5'
+                : 'bg-red-500/10 border-red-500/20 text-red-400 shadow-red-500/5'}`}
           >
-            <BsShieldFill size={10} />
-            {warningCount === 0 ? 'Integrity: 100%' : `Violations: ${warningCount}/${MAX_VIOLATIONS}`}
+            <BsShieldFill size={12} />
+            {warningCount === 0 ? 'INTEGRITY: 100%' : `VIOLATIONS: ${warningCount}/${MAX_VIOLATIONS}`}
           </motion.div>
         </div>
 
         {/* ── Top Bar ── */}
-        <div className='fixed top-0 inset-x-0 z-50 bg-[#050505]/90 backdrop-blur-xl
-          border-b border-white/[0.06] px-4 py-3'>
-          <div className='max-w-3xl mx-auto flex items-center gap-3'>
-            <div className='flex items-center gap-2 px-3 py-1.5 rounded-xl
-              bg-white/[0.04] border border-white/[0.07] flex-shrink-0'>
-              <HiSparkles size={11} className='text-emerald-400' />
-              <span className='text-[11px] text-white/50 font-medium hidden sm:block'>{personaLabel}</span>
+        <div className='fixed top-0 inset-x-0 z-50 bg-[#050505]/80 backdrop-blur-2xl
+          border-b border-white/[0.04] px-6 py-4'>
+          <div className='max-w-4xl mx-auto flex items-center justify-between gap-4'>
+            <div className='flex items-center gap-3'>
+              <div className='flex items-center gap-2 px-3 py-1.5 rounded-xl
+                bg-white/[0.03] border border-white/[0.05] shadow-sm'>
+                <HiSparkles size={13} className='text-violet-400' />
+                <span className='text-[12px] text-white/50 font-bold tracking-wide hidden sm:block'>{personaLabel}</span>
+              </div>
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border
+                text-[10px] uppercase font-bold tracking-widest
+                ${voiceMode ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
+                  : 'bg-white/[0.04] border-white/[0.05] text-white/40'}`}>
+                {voiceMode ? <><BsMicFill size={11} /> Voice</> : <><BsKeyboardFill size={11} /> Text</>}
+              </div>
             </div>
-            <div className='flex-1'>
-              <div className='flex items-center justify-between mb-1'>
-                <span className='text-[10px] text-white/25'>
-                  {followUpMode ? `Q${currentQ+1} Follow-up` : `Q${currentQ+1} / ${questions.length}`}
+
+            <div className='flex-1 max-w-[300px] hidden md:block'>
+              <div className='flex items-center justify-between mb-1.5'>
+                <span className='text-[10px] text-white/30 uppercase tracking-widest font-semibold'>
+                  {followUpMode ? `Q${currentQ+1} Follow-up` : `Question ${currentQ+1} of ${questions.length}`}
                 </span>
-                <span className='text-[10px] text-white/25'>{Math.round(progress)}%</span>
+                <span className='text-[10px] text-white/30 font-bold'>{Math.round(progress)}%</span>
               </div>
-              <div className='h-1 bg-white/[0.06] rounded-full overflow-hidden'>
+              <div className='h-1.5 bg-white/[0.04] rounded-full overflow-hidden'>
                 <motion.div animate={{ width: `${progress}%` }} transition={{ duration: 0.4 }}
-                  className='h-full bg-emerald-400 rounded-full' />
+                  className='h-full bg-violet-500 rounded-full shadow-[0_0_10px_rgba(139,92,246,0.3)]' />
               </div>
             </div>
-            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border
-              text-[10px] flex-shrink-0 font-medium
-              ${voiceMode ? 'bg-violet-500/10 border-violet-500/20 text-violet-400'
-                : 'bg-white/[0.04] border-white/[0.07] text-white/30'}`}>
-              {voiceMode ? <><BsMicFill size={9} /> Voice</> : <><BsKeyboardFill size={9} /> Text</>}
-            </div>
-            <div className='flex items-center gap-1.5 text-white/25 text-[11px] flex-shrink-0'>
-              <BsClockFill size={10} />
-              <span>{formatTime(totalTime)}</span>
+
+            <div className='flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.06]'>
+              <div className='w-2 h-2 rounded-full bg-emerald-400 pulse-ring' />
+              <div className='flex items-center gap-1.5 text-white/60 text-[12px] font-mono font-medium'>
+                <span>{formatTime(totalTime)}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className='relative z-10 max-w-3xl mx-auto px-4 pt-24 pb-24'>
+        <div className='relative z-10 max-w-3xl mx-auto px-4 pt-28 pb-32'>
           <AnimatePresence mode='wait'>
             <motion.div key={`${currentQ}-${followUpMode}`}
               initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}

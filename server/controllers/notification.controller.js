@@ -1,11 +1,7 @@
 import Notification from "../models/notification.model.js"
 import User from "../models/user.model.js"
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/**
- * Internal helper — create a notification (used by other controllers too)
- */
 export const createNotification = async ({
   userId, type, priority = "medium",
   title, message, actionLabel = null, actionUrl = null,
@@ -21,12 +17,6 @@ export const createNotification = async ({
   })
 }
 
-// ─── Route Handlers ───────────────────────────────────────────────────────────
-
-/**
- * GET /api/notifications
- * Returns all non-expired notifications for the user, newest first.
- */
 export const getNotifications = async (req, res) => {
   try {
     const userId = req.userId
@@ -50,10 +40,6 @@ export const getNotifications = async (req, res) => {
   }
 }
 
-/**
- * PUT /api/notifications/:id/read
- * Mark a single notification as read.
- */
 export const markRead = async (req, res) => {
   try {
     const { id } = req.params
@@ -67,10 +53,6 @@ export const markRead = async (req, res) => {
   }
 }
 
-/**
- * PUT /api/notifications/read-all
- * Mark ALL notifications as read.
- */
 export const markAllRead = async (req, res) => {
   try {
     await Notification.updateMany(
@@ -83,10 +65,6 @@ export const markAllRead = async (req, res) => {
   }
 }
 
-/**
- * DELETE /api/notifications/:id
- * Delete a single notification.
- */
 export const deleteNotification = async (req, res) => {
   try {
     const { id } = req.params
@@ -97,10 +75,7 @@ export const deleteNotification = async (req, res) => {
   }
 }
 
-/**
- * DELETE /api/notifications/clear-all
- * Delete all read notifications.
- */
+
 export const clearReadNotifications = async (req, res) => {
   try {
     await Notification.deleteMany({ userId: req.userId, isRead: true })
@@ -110,55 +85,54 @@ export const clearReadNotifications = async (req, res) => {
   }
 }
 
-/**
- * POST /api/notifications/check-reminders  (called on login / dashboard load)
- * Smart logic: auto-generate contextual notifications based on user state.
- */
 export const checkAndCreateReminders = async (req, res) => {
   try {
     const userId = req.userId
     const user = await User.findById(userId)
     if (!user) return res.status(404).json({ success: false })
 
-    const created = []
-    const now = new Date()
-
-    // ── 1. Session Reminder — if enabled & no practice in 2+ days ──
+    // ==================================
+    // 1. Smart Practice Reminders
+    // ==================================
     if (user.notifications?.sessionReminders) {
       const lastPractice = user.lastPracticeAt
       const daysSince = lastPractice
         ? Math.floor((now - new Date(lastPractice)) / 86400000)
         : null
 
-      if (daysSince === null || daysSince >= 2) {
-        // Check if we already sent this reminder today
-        const existingToday = await Notification.findOne({
+      if (daysSince === null || daysSince >= 3) {
+        // Prevent spam: only one active practice unread reminder at a time
+        const activeReminder = await Notification.findOne({
           userId,
           type: "session_reminder",
-          createdAt: { $gte: new Date(now.setHours(0, 0, 0, 0)) },
+          isRead: false
         })
 
-        if (!existingToday) {
+        if (!activeReminder) {
+          const isHighPriority = daysSince !== null && daysSince >= 7
+          const title = isHighPriority ? "Your Interview Skills Wait For No One 🚀" : "Keep Your Streak Alive 🎯"
           const msg = daysSince === null
-            ? "You haven't done any practice session yet. Start now to build momentum!"
-            : `It's been ${daysSince} day${daysSince > 1 ? 's' : ''} since your last session. Keep the streak going!`
+            ? "Top candidates practice mock interviews weekly. Start your first AI mock session today to set a baseline."
+            : `It's been ${daysSince} days since your last session. Consistency is the #1 predictor of cracking technical rounds.`
 
           const n = await createNotification({
             userId,
             type: "session_reminder",
-            priority: daysSince >= 5 ? "high" : "medium",
-            title: "Time to Practice! 🎯",
+            priority: isHighPriority ? "high" : "medium",
+            title,
             message: msg,
-            actionLabel: "Start Session",
+            actionLabel: "Start Mock Interview",
             actionUrl: "/interview",
-            expiresInDays: 2,
+            expiresInDays: 3,
           })
           created.push(n)
         }
       }
     }
 
-    // ── 2. Weekly Report — every Monday ──
+    // ==================================
+    // 2. Weekly Industry Insights / Report
+    // ==================================
     if (user.notifications?.weeklyReport) {
       const isMonday = now.getDay() === 1
       if (isMonday) {
@@ -171,10 +145,10 @@ export const checkAndCreateReminders = async (req, res) => {
           const n = await createNotification({
             userId,
             type: "weekly_report",
-            priority: "low",
-            title: "Your Weekly Summary is Ready 📊",
-            message: "Check your progress report for last week — see what improved and where to focus.",
-            actionLabel: "View Analytics",
+            priority: "medium",
+            title: "Your Weekly Analytics & Benchmark 📊",
+            message: "Your personalized performance report is ready. See how you stack up against the 75th percentile of candidates this week.",
+            actionLabel: "View Insights",
             actionUrl: "/analytics",
             expiresInDays: 7,
           })
@@ -183,36 +157,63 @@ export const checkAndCreateReminders = async (req, res) => {
       }
     }
 
-    // ── 3. First-time welcome tip ──
+    // ==================================
+    // 3. Industry-Level Tips & Tricks
+    // ==================================
     if (user.notifications?.tipsNewsletter) {
-      const welcomeDone = await Notification.findOne({ userId, type: "tip" })
-      if (!welcomeDone) {
+      // Send a new tip only if they don't have an unread tip, and haven't received one in 3 days
+      const recentTip = await Notification.findOne({
+        userId, 
+        type: "tip",
+        createdAt: { $gte: new Date(now.getTime() - 3 * 86400000) }
+      })
+      
+      const unreadTip = await Notification.findOne({ userId, type: "tip", isRead: false })
+
+      if (!recentTip && !unreadTip) {
         const tips = [
-          { title: "Pro Tip: Use the STAR Method ⭐", msg: "When answering behavioral questions, use Situation → Task → Action → Result. It impresses interviewers every time." },
-          { title: "Did you know? 💡", msg: "Candidates who do 5+ mock interviews are 3× more likely to clear technical rounds on the first attempt." },
-          { title: "Resume Hack 📄", msg: "Quantify your achievements — '20% faster' beats 'improved performance' every time. Upload your resume for a free ATS check." },
+          { title: "FAANG Meta: The STAR Framework ⭐", msg: "Don't just list what you did. Explain the Situation, Task, Action you took, and the quantifiable Result. (e.g., 'Reduced latency by 40ms')." },
+          { title: "System Design Golden Rule 🏗️", msg: "Always clarify non-functional requirements (QPS, Latency, Consistency) before drawing a single architecture box. It shows senior-level maturity." },
+          { title: "Resume ATS Hack 📄", msg: "ATS parsers fail on multi-column layouts. Use a clean, single-column plain text format to ensure a 100% parse rate." },
+          { title: "The 'Tell me about yourself' Pitch 🎤", msg: "Keep it to 90 seconds: Past (brief setup), Present (current impact), and Future (why you're a perfect fit for this role)." },
+          { title: "Handling 'I don't know' 🧠", msg: "Never just say 'I don't know'. Say: 'I haven't used X directly, but based on my experience with Y, I would approach it by...'. Shows engineering problem-solving." }
         ]
         const tip = tips[Math.floor(Math.random() * tips.length)]
         const n = await createNotification({
           userId, type: "tip", priority: "low",
           title: tip.title, message: tip.msg,
-          actionLabel: "Practice Now", actionUrl: "/interview",
-          expiresInDays: 14,
+          actionLabel: "Try it in Mock", actionUrl: "/interview",
+          expiresInDays: 5,
         })
         created.push(n)
       }
     }
 
-    // ── 4. Resume missing warning ──
+    // ==================================
+    // 4. Smart System Prompts
+    // ==================================
     if (!user.resumeUrl) {
-      const existing = await Notification.findOne({ userId, type: "system", title: { $regex: /resume/i } })
-      if (!existing) {
+      const activeMissingResume = await Notification.findOne({ userId, type: "system", title: { $regex: /resume/i }, isRead: false })
+      if (!activeMissingResume) {
         const n = await createNotification({
           userId, type: "system", priority: "medium",
-          title: "Upload Your Resume 📎",
-          message: "Get AI-powered ATS scoring, keyword gap analysis, and interview questions tailored to your experience.",
-          actionLabel: "Go to Settings", actionUrl: "/settings",
-          expiresInDays: 30,
+          title: "Missing ATS Context 📎",
+          message: "Upload your exact resume. Our AI adjusts interview questions, difficulty, and grading rubrics based on your claimed experience.",
+          actionLabel: "Upload Resume", actionUrl: "/settings",
+          expiresInDays: 7,
+        })
+        created.push(n)
+      }
+    } else {
+      // Suggest features they haven't used much if they have a resume
+      const hasPlacementPrompt = await Notification.findOne({ userId, type: "system", title: { $regex: /placement/i } })
+      if (!hasPlacementPrompt && user.credits > 10) {
+         const n = await createNotification({
+          userId, type: "system", priority: "low",
+          title: "Discover Your Placement Probability 🔮",
+          message: "We've trained an ML model on 10,000+ candidate profiles. Use your credits to predict your FAANG/MAANG placement odds.",
+          actionLabel: "Try Predictor", actionUrl: "/placement",
+          expiresInDays: 7,
         })
         created.push(n)
       }

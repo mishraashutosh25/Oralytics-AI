@@ -15,17 +15,6 @@ function InterviewPage() {
 
       {/* Back button — sirf Step1 pe */}
       {step === 1 && (
-        <button
-          onClick={() => navigate(-1)}
-          className='fixed top-5 left-5 z-50 flex items-center gap-2
-            px-4 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08]
-            text-white/40 text-sm hover:text-white/70 hover:bg-white/[0.07]
-            transition-all duration-200 cursor-pointer'>
-          ← Back
-        </button>
-      )}
-
-      {step === 1 && (
         <Step1SetUp
           onStart={(data) => {
             setInterviewData(data)

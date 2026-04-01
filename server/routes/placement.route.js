@@ -5,10 +5,12 @@ import {
   getPlacementStats,
   checkHealth,
 } from "../controllers/placement.controller.js";
+import isAuth from "../middlewares/isAuth.js";
+import { checkCredits } from "../middlewares/credit.middleware.js";
 
 const placementRouter = express.Router();
 
-placementRouter.post("/predict", predictPlacement);
+placementRouter.post("/predict", isAuth, checkCredits('Placement Prediction'), predictPlacement);
 placementRouter.get("/stats",   getPlacementStats);
 placementRouter.get("/health",  checkHealth);
 

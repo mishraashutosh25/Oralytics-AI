@@ -1,5 +1,6 @@
 import User from "../models/user.model.js";
-import fs from "fs"
+import fs from "fs";
+import cloudinary from "../utils/cloudinary.js";
 
 export const getCurrentUser = async (req, res) => {
   try {
@@ -92,18 +93,33 @@ export const saveProfilePhoto = async (req, res) => {
     if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
 
     const existing = await User.findById(userId);
-    // Delete old photo
-    if (existing?.profilePhotoUrl) {
-      const oldPath = existing.profilePhotoUrl.replace(/\\/g, '/');
-      if (fs.existsSync(oldPath)) {
-        try { fs.unlinkSync(oldPath) } catch (e) { /* ignore */ }
-      }
+    // Delete old photo from cloudinary if we can (optional, but good practice if public_id is known)
+    if (existing?.profilePhotoUrl && existing.profilePhotoUrl.includes("cloudinary")) {
+      try {
+        const urlParts = existing.profilePhotoUrl.split("/");
+        const publicId = urlParts[urlParts.length - 1].split(".")[0];
+        await cloudinary.uploader.destroy(`oralytics/avatars/${publicId}`);
+      } catch (e) { /* ignore */ }
     }
 
-    const newPath = req.file.path.replace(/\\/g, '/');
+    const b64 = Buffer.from(req.file.buffer).toString("base64");
+    const dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+    
+    let uploadRes;
+    try {
+      uploadRes = await cloudinary.uploader.upload(dataURI, {
+        folder: "oralytics/avatars",
+        resource_type: "auto"
+      });
+    } catch(err) {
+      console.log("Cloudinary photo upload error:", err)
+      return res.status(500).json({ success: false, message: "Cloudinary upload failed" });
+    }
+
+    const newPath = uploadRes.secure_url;
     const updated = await User.findByIdAndUpdate(
       userId,
-      { $set: { profilePhotoUrl: newPath, avatarSeed: null } }, // reset avatar when photo uploaded
+      { $set: { profilePhotoUrl: newPath, avatarSeed: null } },
       { new: true }
     ).select("-__v");
 
@@ -117,8 +133,12 @@ export const deleteProfilePhoto = async (req, res) => {
   try {
     const userId = req.userId;
     const user = await User.findById(userId);
-    if (user?.profilePhotoUrl && fs.existsSync(user.profilePhotoUrl)) {
-      try { fs.unlinkSync(user.profilePhotoUrl) } catch (e) { /* ignore */ }
+    if (user?.profilePhotoUrl && user.profilePhotoUrl.includes("cloudinary")) {
+      try {
+        const urlParts = user.profilePhotoUrl.split("/");
+        const publicId = urlParts[urlParts.length - 1].split(".")[0];
+        await cloudinary.uploader.destroy(`oralytics/avatars/${publicId}`);
+      } catch (e) { /* ignore */ }
     }
     const updated = await User.findByIdAndUpdate(
       userId,
@@ -148,24 +168,39 @@ export const saveResume = async (req, res) => {
     }
 
     const existingUser = await User.findById(userId)
-    if (existingUser?.resumeUrl) {
+    if (existingUser?.resumeUrl && existingUser.resumeUrl.includes("cloudinary")) {
       try {
-        
-        const oldPath = existingUser.resumeUrl.replace(/\\/g, '/')
-        
-        if (fs.existsSync(oldPath)) {
-          fs.unlinkSync(oldPath)
-         
-        } else {
-          
-        }
+        const urlParts = existingUser.resumeUrl.split("/");
+        let publicId = urlParts[urlParts.length - 1];
+        await cloudinary.uploader.destroy(`oralytics/resumes/${publicId}`, { resource_type: "raw" }).catch(e=>console.log(e));
       } catch (deleteErr) {
-        console.log("⚠️ Delete failed:", deleteErr.message)
-        
+        console.log("⚠️ Old resume delete failed:", deleteErr.message)
       }
     }
-    const newPath = req.file.path.replace(/\\/g, '/')
     
+    let uploadRes;
+    try {
+      uploadRes = await new Promise((resolve, reject) => {
+        const ext = req.file.originalname.split('.').pop();
+        const cleanName = req.file.originalname.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 15);
+        const filename = `${cleanName}_${Date.now()}.${ext}`;
+        
+        const stream = cloudinary.uploader.upload_stream({
+          folder: "oralytics/resumes",
+          resource_type: "raw", // Forces pdf/docx to remain original files instead of images
+          public_id: filename
+        }, (error, result) => {
+          if (result) resolve(result);
+          else reject(error);
+        });
+        stream.end(req.file.buffer);
+      });
+    } catch(err) {
+      console.log("Cloudinary resume upload error:", err)
+      return res.status(500).json({ success: false, message: "Cloudinary upload failed" });
+    }
+
+    const newPath = uploadRes.secure_url;
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
@@ -202,9 +237,16 @@ export const deleteResume = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    // Delete file from disk
-    if (user.resumeUrl && fs.existsSync(user.resumeUrl)) {
-      fs.unlinkSync(user.resumeUrl);
+    // Delete file from cloudinary
+    if (user.resumeUrl && user.resumeUrl.includes("cloudinary")) {
+      try {
+        const urlParts = user.resumeUrl.split("/");
+        let publicId = urlParts[urlParts.length - 1].split(".")[0];
+        // PDF/DOCX usually uploads with resource_type: raw or image depending on Cloudinary config
+        await cloudinary.uploader.destroy(`oralytics/resumes/${publicId}`, { resource_type: "raw" }).catch(e=>cloudinary.uploader.destroy(`oralytics/resumes/${publicId}`));
+      } catch (e) {
+        console.log("Delete resume error:", e.message);
+      }
     }
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -241,9 +283,23 @@ export const deleteAccount = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    // Delete resume file from disk if exists
-    if (user.resumeUrl && fs.existsSync(user.resumeUrl)) {
-      fs.unlinkSync(user.resumeUrl);
+    // Delete resume and avatar from Cloudinary
+    try {
+      if (user.resumeUrl && user.resumeUrl.includes("cloudinary")) {
+        const urlParts = user.resumeUrl.split("/");
+        let publicId = urlParts[urlParts.length - 1];
+        await cloudinary.uploader.destroy(`oralytics/resumes/${publicId}`, { resource_type: "raw" });
+      } else if (user.resumeUrl && fs.existsSync(user.resumeUrl)) {
+        fs.unlinkSync(user.resumeUrl);
+      }
+
+      if (user.profilePhotoUrl && user.profilePhotoUrl.includes("cloudinary")) {
+        const urlParts = user.profilePhotoUrl.split("/");
+        let publicId = urlParts[urlParts.length - 1].split(".")[0];
+        await cloudinary.uploader.destroy(`oralytics/avatars/${publicId}`);
+      }
+    } catch (e) {
+      console.error("Failed to cleanup Cloudinary files on account deletion: ", e.message);
     }
 
     // Delete user from DB

@@ -9,6 +9,7 @@ import {
   BsRocketFill, BsChevronDown
 } from 'react-icons/bs'
 import { HiSparkles } from 'react-icons/hi'
+import Footer from '../components/Footer'
 
 const FadeUp = ({ children, delay = 0, className = '' }) => {
   const ref = useRef(null)
@@ -341,6 +342,7 @@ function Changelog() {
         </FadeUp>
 
       </main>
+      <Footer />
     </div>
     {showAuthModal && (
       <AuthModel onclose={() => setShowAuthModal(false)} />

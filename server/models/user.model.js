@@ -56,6 +56,22 @@ const userSchema = new mongoose.Schema({
     voiceTranscript: { type: Boolean, default: true     },
   },
 
+  // ── Credit System Extensions ──
+  referralCode: {
+    type: String,
+    unique: true,
+    sparse: true // Allows multiple users to safely have null referralCodes initially
+  },
+  referredBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  lastDailyRewardAt: {
+    type: Date,
+    default: null
+  }
+
 }, { timestamps: true })
 
 const User = mongoose.model("User", userSchema)

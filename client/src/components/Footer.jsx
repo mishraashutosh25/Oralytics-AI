@@ -23,10 +23,10 @@ const footerLinks = [
   {
     title: "Resources",
     links: [
-      { label: "Interview Tips", route: "/blog" },
-      { label: "Blog",           route: "/blog" },
-      { label: "Help Centre",    route: "/help" },
-      { label: "API Docs",       route: "/docs" },
+      { label: "Interview Guides",     route: "/blog" },
+      { label: "Engineering Blog",     route: "/blog" },
+      { label: "API Documentation",    route: "/docs" },
+      { label: "Help Centre",          route: "/help" },
     ],
   },
   {

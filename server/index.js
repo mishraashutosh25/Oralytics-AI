@@ -10,6 +10,7 @@ import placementRouter from './routes/placement.route.js'
 import analyticsRouter from './routes/analytics.route.js'
 import notificationRouter from './routes/notification.route.js'
 import paymentRouter from './routes/payment.route.js'
+import creditRouter from './routes/credit.route.js'
 
 dotenv.config()
 
@@ -37,6 +38,7 @@ app.use("/api/placement", placementRouter)
 app.use("/api/analytics",      analyticsRouter)
 app.use("/api/notifications",  notificationRouter)
 app.use("/api/payment",        paymentRouter)
+app.use("/api/credits",        creditRouter)
 
 const PORT = process.env.PORT || 8080
 

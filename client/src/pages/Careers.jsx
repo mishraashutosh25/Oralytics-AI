@@ -11,6 +11,7 @@ import { HiSparkles } from 'react-icons/hi'
 import axios from 'axios'
 import logo from "../assets/logo.png";
 import { ServerURL } from '../App'
+import Footer from '../components/Footer'
 
 const FadeUp = ({ children, delay = 0, className = '' }) => {
   const ref = useRef(null)
@@ -490,6 +491,7 @@ function Careers() {
         </FadeUp>
 
       </main>
+      <Footer />
     </div>
   )
 }

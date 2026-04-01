@@ -1,13 +1,15 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useSelector } from 'react-redux'
+import { useSelector, useDispatch } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import { setUserData } from '../redux/userSlice'
 import { ServerURL } from '../App'
 import {
   BsRocketFill, BsFileEarmarkTextFill,
-  BsCheckCircleFill, BsArrowRight,
+  BsCheckCircleFill, BsArrowRight, BsArrowLeft,
   BsPersonFill, BsMicFill, BsKeyboardFill,
-  BsBuildingFill
+  BsBuildingFill, BsShieldFill
 } from 'react-icons/bs'
 import { HiSparkles } from 'react-icons/hi'
 import Footer from './Footer'
@@ -117,6 +119,7 @@ const companyColors = {
 
 export default function Step1SetUp({ onStart }) {
   const { userData } = useSelector(s => s.user)
+  const dispatch = useDispatch()
 
   const [role, setRole] = useState('')
   const [difficulty, setDifficulty] = useState(userData?.interviewPrefs?.difficulty || 'medium')
@@ -137,6 +140,9 @@ export default function Step1SetUp({ onStart }) {
         { role, difficulty, useResume, sessionDuration: duration, persona, company },
         { withCredentials: true }
       )
+      if (res.data.credits !== undefined) {
+          dispatch(setUserData({ ...userData, credits: res.data.credits }))
+      }
       onStart({
         questions: res.data.questions,
         sessionConfig: {
@@ -147,11 +153,17 @@ export default function Step1SetUp({ onStart }) {
         }
       })
     } catch (e) {
-      setError(e.response?.data?.message || "Failed to generate questions. Try again.")
+      if (e.response?.status === 402) {
+        setError('PAYWALL')
+      } else {
+        setError(e.response?.data?.message || "Failed to generate questions. Try again.")
+      }
     } finally {
       setLoading(false)
     }
   }
+
+  const navigate = useNavigate()
 
   const selectedCompany = companies.find(c => c.val === company)
 
@@ -164,13 +176,32 @@ export default function Step1SetUp({ onStart }) {
       `}</style>
 
       <div className='pointer-events-none fixed inset-0 overflow-hidden'>
-        <div className='absolute w-[500px] h-[500px] bg-emerald-500 opacity-[0.06] blur-[160px] rounded-full -top-32 -right-32' />
-        <div className='absolute w-[400px] h-[400px] bg-violet-500 opacity-[0.04] blur-[140px] rounded-full -bottom-32 -left-32' />
+        <div className='absolute w-[600px] h-[600px] bg-violet-500/10 blur-[150px] rounded-full -top-32 -right-32' />
+        <div className='absolute w-[500px] h-[500px] bg-emerald-500/5 blur-[120px] rounded-full -bottom-32 -left-32' />
         <div className='pointer-events-none absolute inset-0'
-          style={{ backgroundImage: 'radial-gradient(circle,rgba(255,255,255,0.02) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
+          style={{ backgroundImage: 'radial-gradient(circle,rgba(255,255,255,0.015) 1px,transparent 1px)', backgroundSize: '32px 32px' }} />
       </div>
 
-      <div className='relative z-10 max-w-3xl mx-auto px-6 pt-20 pb-24'>
+      {/* ── Top Nav ── */}
+      <div className='relative z-20 flex items-center justify-between px-6 pt-7 max-w-7xl mx-auto'>
+        <motion.button onClick={() => navigate('/dashboard')}
+          initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          whileHover={{ x: -2 }} whileTap={{ scale: 0.95 }}
+          className='flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.07]
+            text-white/45 hover:text-white/80 hover:bg-white/[0.06] hover:border-white/[0.12]
+            transition-all duration-200 cursor-pointer text-sm font-medium group'>
+          <BsArrowLeft size={13} className='group-hover:-translate-x-0.5 transition-transform duration-200' />
+          Back
+        </motion.button>
+
+        <div className='flex items-center gap-2 px-3.5 py-2 rounded-xl
+          bg-violet-500/8 border border-violet-500/15 text-violet-400 text-[11px] font-medium'>
+          <BsRocketFill size={10} /> Standard Interview Setup
+        </div>
+      </div>
+
+      <div className='relative z-10 max-w-3xl mx-auto px-6 pt-12 pb-24'>
 
         {/* Header */}
         <motion.div
@@ -180,19 +211,19 @@ export default function Step1SetUp({ onStart }) {
           className='text-center mb-12'
         >
           <div className='inline-flex items-center gap-2 px-4 py-1.5 rounded-full
-            bg-emerald-500/10 border border-emerald-500/20 text-emerald-400
+            bg-violet-500/10 border border-violet-500/20 text-violet-400
             text-xs font-medium mb-6'>
             <HiSparkles size={12} /> AI Interview Session
           </div>
-          <h1 className='i-title text-4xl md:text-5xl font-bold text-white tracking-tight mb-3'>
-            Set Up Your <span className='text-emerald-400'>Interview</span>
+          <h1 className='i-title text-4xl md:text-5xl font-black text-white tracking-tight mb-3'>
+            Set Up Your <span className='text-violet-400'>Interview</span>
           </h1>
-          <p className='text-white/35 text-base'>
+          <p className='text-white/35 text-sm'>
             Configure your session and our AI will generate personalized questions
           </p>
         </motion.div>
 
-        <div className='space-y-5'>
+        <div className='space-y-4'>
 
           {/* Role Selection */}
           <motion.div
@@ -210,10 +241,10 @@ export default function Step1SetUp({ onStart }) {
                   onClick={() => setRole(r.val)}
                   className={`p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer
                     ${role === r.val
-                      ? 'bg-emerald-500/10 border-emerald-500/25'
+                      ? 'bg-violet-500/10 border-violet-500/25'
                       : 'bg-white/[0.02] border-white/[0.07] hover:border-white/[0.14]'}`}>
                   <span className='text-lg mb-1 block'>{r.icon}</span>
-                  <p className={`text-xs font-semibold mb-0.5 ${role === r.val ? 'text-emerald-400' : 'text-white/70'}`}>
+                  <p className={`text-xs font-semibold mb-0.5 ${role === r.val ? 'text-violet-400' : 'text-white/70'}`}>
                     {r.val}
                   </p>
                   <p className='text-[10px] text-white/25 leading-tight'>{r.desc}</p>
@@ -544,7 +575,20 @@ export default function Step1SetUp({ onStart }) {
             </motion.div>
           )}
 
-          {error && <p className='text-red-400 text-xs text-center'>{error}</p>}
+          {error === 'PAYWALL' ? (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              className='bg-red-500/10 border border-red-500/20 rounded-2xl p-5 text-center'>
+              <div className='w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-3 shadow-[0_0_15px_rgba(239,68,68,0.3)]'>
+                <BsShieldFill size={20} className='text-red-400' />
+              </div>
+              <p className='text-white font-bold text-sm mb-1'>Insufficient Credits</p>
+              <p className='text-[11px] text-white/50 mb-4 px-4'>You need 25 credits to start a Mock Interview. Upgrade your plan to unlock more practice.</p>
+              <button onClick={() => navigate('/credits')}
+                className='w-full py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-amber-500 text-white font-bold text-xs shadow-[0_0_15px_rgba(239,68,68,0.4)] hover:shadow-[0_0_25px_rgba(239,68,68,0.6)] transition-all'>
+                Upgrade to Premium
+              </button>
+            </motion.div>
+          ) : error && <p className='text-red-400 text-xs text-center'>{error}</p>}
 
           {/* Start Button */}
           <motion.button
@@ -554,14 +598,14 @@ export default function Step1SetUp({ onStart }) {
             onClick={handleStart}
             disabled={loading || !role}
             className='w-full flex items-center justify-center gap-3 py-4 rounded-2xl
-              bg-emerald-400 text-black font-bold text-base cursor-pointer
-              hover:bg-emerald-300 transition-all duration-300
+              bg-violet-500 text-white font-bold text-base cursor-pointer
+              hover:bg-violet-400 transition-all duration-300
               disabled:opacity-40 disabled:cursor-not-allowed
-              shadow-[0_0_40px_rgba(52,211,153,0.2)]'
+              shadow-[0_0_40px_rgba(139,92,246,0.3)]'
           >
             {loading ? (
               <>
-                <div className='w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin' />
+                <div className='w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin' />
                 Generating Questions...
               </>
             ) : (

@@ -4,20 +4,35 @@ import { createRequire } from "module"
 import { askAi } from "../services/openRouter.service.js"
 import User from "../models/user.model.js"
 import Interview from "../models/interview.model.js"
+import CreditHistory from "../models/creditHistory.model.js"
+import { CREDIT_COSTS } from "./credit.controller.js"
 
 const require = createRequire(import.meta.url)
 
-// ── Extract text from PDF or DOCX ──────────────────────────────────────────
-async function extractResumeText(filePath) {
-  const ext = path.extname(filePath).toLowerCase()
-  if (ext === ".docx") {
+import axios from "axios"
+
+// ── Extract text from PDF or DOCX (Local or URL) ───────────────────────────
+async function extractResumeText(fileSource) {
+  let buffer;
+  const isUrl = fileSource.startsWith("http");
+
+  if (isUrl) {
+    const response = await axios.get(fileSource, { responseType: 'arraybuffer' });
+    buffer = Buffer.from(response.data);
+  } else {
+    buffer = fs.readFileSync(fileSource);
+  }
+
+  const isDocx = fileSource.toLowerCase().includes('.docx');
+
+  if (isDocx) {
     const mammoth = require("mammoth")
-    const result = await mammoth.extractRawText({ path: filePath })
+    const result = await mammoth.extractRawText({ buffer })
     return result.value || ""
   }
+  
   // Default: PDF
   const pdfParse = require("pdf-parse")
-  const buffer = fs.readFileSync(filePath)
   const data = await pdfParse(buffer)
   return data.text || ""
 }
@@ -40,7 +55,12 @@ export const analyzeResume = async (req, res) => {
     if (!user?.resumeUrl) {
       return res.status(400).json({ success: false, message: "Resume not uploaded. Please upload first." })
     }
-    if (!fs.existsSync(user.resumeUrl)) {
+    
+    const isUrl = user.resumeUrl.startsWith("http");
+    console.log("🔍 Analyze Resume Triggered! URL:", user.resumeUrl, "| isUrl:", isUrl);
+
+    if (!isUrl && !fs.existsSync(user.resumeUrl)) {
+      console.log("❌ File missing on disk and isUrl is false.");
       return res.status(400).json({ success: false, message: "Resume file not found on server. Please re-upload." })
     }
 
@@ -49,10 +69,12 @@ export const analyzeResume = async (req, res) => {
     try {
       resumeText = await extractResumeText(user.resumeUrl)
     } catch (e) {
+      console.error("❌ extractResumeText Failed:", e.message, e.stack);
       return res.status(400).json({ success: false, message: `Could not read resume: ${e.message}` })
     }
 
     if (!resumeText || resumeText.trim().length < 50) {
+      console.error("❌ resumeText too short or empty. Length:", resumeText?.length);
       return res.status(400).json({ success: false, message: "Resume appears to be empty or image-only. Please upload a text-based PDF." })
     }
 
@@ -166,14 +188,22 @@ export const matchResumeWithJD = async (req, res) => {
       return res.status(400).json({ success: false, message: "Please upload your resume first" })
     }
 
-    if (!fs.existsSync(user.resumeUrl)) {
+    const isUrl = user.resumeUrl.startsWith("http");
+    if (!isUrl && !fs.existsSync(user.resumeUrl)) {
       return res.status(400).json({ success: false, message: "Resume file not found. Please re-upload." })
     }
 
-    const fileBuffer = fs.readFileSync(user.resumeUrl)
-    const pdfParse = require("pdf-parse")
-    const pdfData = await pdfParse(fileBuffer)
-    const resumeText = pdfData.text
+    let resumeText;
+    try {
+      resumeText = await extractResumeText(user.resumeUrl);
+    } catch (e) {
+      console.error("Match JD text extraction error:", e.message);
+      return res.status(400).json({ success: false, message: `Could not read resume: ${e.message}` })
+    }
+
+    if (!resumeText || resumeText.length < 50) {
+      return res.status(400).json({ success: false, message: "Resume appears empty. Please re-upload a valid PDF/DOCX." });
+    }
 
     const messages = [
       {
@@ -257,13 +287,21 @@ export const generateQuestions = async (req, res) => {
 
 
     let resumeContext = ""
-    if (useResume) {
-      const user = await User.findById(userId)
-      if (user?.resumeUrl && fs.existsSync(user.resumeUrl)) {
-        const fileBuffer = fs.readFileSync(user.resumeUrl)
-        const pdfParse = require("pdf-parse")
-        const pdfData = await pdfParse(fileBuffer)
-        resumeContext = pdfData.text
+    let user = await User.findById(userId)
+    
+    // Feature usage cost check
+    const featureName = req.body.mode === 'video' ? 'Video Interview' : 'Mock Interview'
+    const cost = CREDIT_COSTS[featureName] || 25
+    
+    if (user.credits < cost) {
+      return res.status(402).json({ success: false, message: `Insufficient credits. Need ${cost} but have ${user.credits}. Please upgrade.` })
+    }
+
+    if (useResume && user?.resumeUrl) {
+      try {
+        resumeContext = await extractResumeText(user.resumeUrl);
+      } catch (e) {
+        console.error("Warning: Resume provided but failed to extract text:", e.message);
       }
     }
 
@@ -349,10 +387,23 @@ Return ONLY this JSON:
       return res.status(500).json({ success: false, message: "AI response parsing failed." })
     }
 
+    // Deduct credits ONLY if successful array is parsed
+    user.credits -= cost;
+    if (user.credits < 0) user.credits = 0;
+    await user.save();
+    
+    await CreditHistory.create({
+      userId: user._id,
+      feature: featureName,
+      creditsDeducted: cost,
+      description: `Generated ${questionCount} questions on ${role}`
+    });
+
     return res.status(200).json({
       success: true,
       questions: data.questions,
-      sessionConfig: data.sessionConfig
+      sessionConfig: data.sessionConfig,
+      credits: user.credits
     })
 
   } catch (error) {
@@ -627,7 +678,6 @@ export const saveSession = async (req, res) => {
     await session.save()
 
     await User.findByIdAndUpdate(userId, {
-      $inc: { credits: -1 },
       $set: { lastPracticeAt: new Date() },
     })
 
@@ -648,13 +698,14 @@ export const getMySessions = async (req, res) => {
     const userId = req.user?._id || req.userId
     const sessions = await Interview.find({ userId, status: 'completed' })
       .sort({ completedAt: -1 })
-      .select('role difficulty questions report completedAt createdAt')
+      .select('role difficulty mode questions report completedAt createdAt')
       .lean()
 
     const mapped = sessions.map(s => ({
       _id: s._id,
       role: s.role,
       difficulty: s.difficulty || 'medium',
+      mode: s.mode || 'text',
       completedAt: s.completedAt || s.createdAt,
       createdAt: s.createdAt,
       report: {
@@ -670,5 +721,24 @@ export const getMySessions = async (req, res) => {
   } catch (err) {
     console.error('getMySessions error:', err)
     return res.status(500).json({ success: false, message: 'Failed to fetch sessions' })
+  }
+}
+
+// ── Delete Session ────────────────────────────────────────
+export const deleteSession = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.userId
+    const { id } = req.params
+
+    const session = await Interview.findOneAndDelete({ _id: id, userId })
+
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Session not found or already deleted' })
+    }
+
+    return res.json({ success: true, message: 'Session deleted successfully' })
+  } catch (err) {
+    console.error('deleteSession error:', err)
+    return res.status(500).json({ success: false, message: 'Failed to delete session' })
   }
 }

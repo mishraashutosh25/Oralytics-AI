@@ -245,7 +245,7 @@ function Dashboard() {
 
             {/* View History */}
             <motion.button
-              onClick={() => guard("/history")}
+              onClick={() => guard("/my-sessions")}
               whileHover={{ scale: 1.03, y: -1 }}
               whileTap={{ scale: 0.97 }}
               className="flex items-center gap-2.5 px-7 py-4 rounded-2xl
@@ -268,7 +268,7 @@ function Dashboard() {
             {[
               { icon: "📊", label: "Placement Predictor", route: "/predictor" },
               { icon: "📝", label: "Resume Analysis",     route: "/settings"  },
-              { icon: "🏆", label: "My Progress",         route: "/history"   },
+              { icon: "🏆", label: "My Progress",         route: "/my-sessions"   },
             ].map((item, i) => (
               <button key={i}
                 onClick={() => guard(item.route)}

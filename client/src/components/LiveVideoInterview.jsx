@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import { useSelector, useDispatch } from 'react-redux'
+import { setUserData } from '../redux/userSlice'
 import { ServerURL } from '../App'
 import {
   BsMicFill, BsMicMuteFill, BsCameraVideoFill,
@@ -23,6 +25,8 @@ const AI_AVATARS = [
 ]
 
 export default function LiveVideoInterview() {
+  const dispatch = useDispatch()
+  const { userData } = useSelector(state => state.user)
   const navigate = useNavigate()
 
   const [phase, setPhase] = useState('setup')
@@ -58,6 +62,7 @@ export default function LiveVideoInterview() {
 
   const userVideoRef = useRef(null)
   const streamRef = useRef(null)
+  const hasEndedRef = useRef(false)
   const recognitionRef = useRef(null)
   const timerRef = useRef(null)
   const totalRef = useRef(null)
@@ -202,17 +207,24 @@ export default function LiveVideoInterview() {
     try {
       await startCamera()
       const res = await axios.post(ServerURL + '/api/interview/generate-questions',
-        { role, difficulty, useResume: false, sessionDuration: '20', persona: 'google' },
+        { role, difficulty, useResume: false, sessionDuration: '20', persona: 'google', mode: 'video' },
         { withCredentials: true })
       setQuestions(res.data.questions)
-      setSessionConfig({ ...res.data.sessionConfig, mode: 'voice' })
+      setSessionConfig({ ...res.data.sessionConfig, mode: 'video' })
       setPhase('connecting')
       setTimeout(() => {
         setPhase('interview')
         setTimeout(() => speakText(res.data.questions[0]?.question), 1000)
       }, 2500)
+      if (res.data.credits !== undefined) {
+        dispatch(setUserData({ ...userData, credits: res.data.credits }))
+      }
     } catch (e) {
-      setSetupError(e.response?.data?.message || "Failed to start. Try again.")
+      if (e.response?.status === 402) {
+        setSetupError('PAYWALL')
+      } else {
+        setSetupError(e.response?.data?.message || "Failed to start. Try again.")
+      }
     } finally { setLoading(false) }
   }
 
@@ -259,6 +271,9 @@ export default function LiveVideoInterview() {
   }
 
   const endInterview = async (allAnswers, violationCount = violations) => {
+    if (hasEndedRef.current) return
+    hasEndedRef.current = true
+
     setPhase('report'); window.speechSynthesis.cancel(); stopListening()
 
     // ── Build live proctoring summary from accumulated metrics ──
@@ -282,27 +297,43 @@ export default function LiveVideoInterview() {
       violationTypes: ls.violations,
     }
 
+    const avgScore = allAnswers.length > 0
+      ? Math.round(allAnswers.reduce((s, a) => s + a.score, 0) / allAnswers.length) : 0
+    
+    let finalReport = null
+    
     try {
-      const avgScore = allAnswers.length > 0
-        ? Math.round(allAnswers.reduce((s, a) => s + a.score, 0) / allAnswers.length) : 0
       const reportRes = await axios.post(ServerURL + '/api/interview/generate-report',
         { answers: allAnswers, sessionConfig, totalTime: formatTime(totalTime) },
         { withCredentials: true })
-      setReport({
+      
+      finalReport = {
         ...reportRes.data.report, avgScore,
         totalTime: formatTime(totalTime), answers: allAnswers,
         sessionConfig: { ...sessionConfig, ...liveMetrics }
-      })
+      }
     } catch {
-      const avgScore = allAnswers.length > 0
-        ? Math.round(allAnswers.reduce((s, a) => s + a.score, 0) / allAnswers.length) : 0
-      setReport({
+      finalReport = {
         avgScore, totalTime: formatTime(totalTime), answers: allAnswers,
         sessionConfig: { ...sessionConfig, ...liveMetrics },
         strengths: [], weaknesses: [], improvements: [],
         overallFeedback: 'Live interview completed.',
         recommendation: avgScore >= 70 ? 'Ready' : 'Needs Practice'
-      })
+      }
+    }
+    
+    setReport(finalReport)
+
+    // Auto-save the session ONLY ONCE
+    try {
+      await axios.post(ServerURL + '/api/interview/save-session', {
+        sessionConfig: { ...sessionConfig, ...liveMetrics, difficulty: sessionConfig.difficulty.toLowerCase() },
+        answers: allAnswers,
+        report: finalReport,
+        proctoringData: liveMetrics
+      }, { withCredentials: true })
+    } catch (err) {
+      console.error("Failed to save session", err)
     }
   }
 
@@ -484,7 +515,20 @@ export default function LiveVideoInterview() {
                 </div>
               </div>
 
-              {setupError && (
+              {setupError === 'PAYWALL' ? (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                  className='bg-red-500/10 border border-red-500/20 rounded-2xl p-5 text-center'>
+                  <div className='w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-3 shadow-[0_0_15px_rgba(239,68,68,0.3)]'>
+                    <BsShieldFill size={20} className='text-red-400' />
+                  </div>
+                  <p className='text-white font-bold text-sm mb-1'>Insufficient Credits</p>
+                  <p className='text-[11px] text-white/50 mb-4 px-4'>You need 50 credits to start a Live Video Interview. Upgrade your plan to unlock more practice.</p>
+                  <button onClick={() => navigate('/credits')}
+                    className='w-full py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-amber-500 text-white font-bold text-xs shadow-[0_0_15px_rgba(239,68,68,0.4)] hover:shadow-[0_0_25px_rgba(239,68,68,0.6)] transition-all'>
+                    Upgrade to Premium
+                  </button>
+                </motion.div>
+              ) : setupError && (
                 <div className='flex items-center gap-2 px-4 py-3 rounded-xl
                   bg-red-500/5 border border-red-500/20 text-red-400 text-xs'>
                   ⚠️ {setupError}
@@ -1349,7 +1393,7 @@ export default function LiveVideoInterview() {
           </button>
         </div>
       </div>
-      <Footer />
-    </>
+      </>
+    
   )
 }

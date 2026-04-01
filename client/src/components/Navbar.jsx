@@ -273,7 +273,7 @@ function Navbar() {
                     <div className="p-2">
                       {[
                         { icon: <FaUserAstronaut size={13} />, label: "My Profile",  action: () => { navigate("/profile"); closeAll() } },
-                        { icon: <FaHistory size={13} />,       label: "My Sessions", action: () => { navigate("/history"); closeAll() } },
+                        { icon: <FaHistory size={13} />,       label: "My Sessions", action: () => { navigate("/my-sessions"); closeAll() } },
                         { icon: <BsBarChartFill size={13} />,  label: "Analytics",   action: () => { navigate("/analytics"); closeAll() } },
                         { icon: <BsGearFill size={13} />,      label: "Settings",    action: () => { navigate("/settings"); closeAll() } },
                       ].map(item => (
