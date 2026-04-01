@@ -20,7 +20,8 @@ app.use(cors({
   origin: [
     "https://oralytics-ai-client.onrender.com",
     "http://localhost:5173",
-    "http://localhost:5174"
+    "http://localhost:5174",
+    "https://oralytics-ai.vercel.app"
   ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE"],
