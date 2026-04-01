@@ -25,8 +25,8 @@ import Blog from './pages/Blog'
 import ApiDocs from './pages/ApiDocs'
 
 // Uncomment below for local development:
-export const ServerURL = "http://localhost:8080"
-// export const ServerURL = "https://oralytics-ai-server.onrender.com"
+// export const ServerURL = "http://localhost:8080"
+export const ServerURL = "https://oralytics-backend.onrender.com"
 
 function ScrollToTop() {
   const { pathname } = useLocation();
