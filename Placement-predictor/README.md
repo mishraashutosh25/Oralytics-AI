@@ -1,75 +1,98 @@
-# PlaceIQ — Industry-Level Student Placement Prediction System
+<div align="center">
+  <h2>🤖 Oralytics AI - Placement Prediction Core</h2>
+  <p><strong>Scalable Machine Learning Microservice for Career Forecasting</strong></p>
 
-## 🏗️ Project Structure
+  [![Python](https://img.shields.io/badge/Python-14354C?style=for-the-badge&logo=python&logoColor=white)](https://python.org/)
+  [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+  [![Scikit-Learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)](https://scikit-learn.org/)
+  [![XGBoost](https://img.shields.io/badge/XGBoost-1271D5?style=for-the-badge&logo=xgboost&logoColor=white)](https://xgboost.readthedocs.io/)
+</div>
+
+<br />
+
+> The Placement Prediction core is a high-performance **Machine Learning microservice** built with Python and FastAPI. It processes 14-dimensional candidate features (academic scores, skills, internships) to predict the statistical probability of a candidate securing tier-1 industry placements. The resulting predictive intelligence powers the analytics engine of Oralytics AI.
+
+---
+
+## 🏛️ Microservice Architecture
 
 ```
-Placement-predictor/
+placement-predictor/
 └── backend/
     ├── data/
-    │   └── placement_data.csv       ← Your real CSV goes here
+    │   └── placement_data.csv       ← Structured training dataset (50k+ records)
     ├── models/
-    │   └── placement_model.pkl      ← Auto-generated after training
+    │   └── placement_model.pkl      ← Automatically generated predictive engine (Pickle)
     ├── src/
-    │   ├── config.py                ← App settings & constants
-    │   ├── data_loader.py           ← Dataset loading & validation
-    │   ├── preprocessor.py          ← Feature engineering pipeline
-    │   ├── model.py                 ← Training, evaluation, selection
-    │   └── logger.py                ← Structured logging
-    ├── app.py                       ← FastAPI application
-    ├── train.py                     ← Run once to train model
-    ├── create_dataset.py            ← Generate synthetic data (if no real CSV)
-    └── requirements.txt
+    │   ├── config.py                ← Environment constants & hyperparameters
+    │   ├── data_loader.py           ← Data ingestion & validation (Pandas)
+    │   ├── preprocessor.py          ← Encoding pipelines & feature scaling
+    │   ├── model.py                 ← GridSearch evaluation & training logic
+    │   └── logger.py                ← Microservice structured application logging
+    ├── app.py                       ← High-concurrency FastAPI entry point
+    ├── train.py                     ← Standalone ML training pipeline script
+    └── requirements.txt             ← Python dependency manifest
 ```
 
-## 📊 Dataset Features (14 columns)
+---
 
-| Feature | Type | Range/Values |
-|---|---|---|
-| Age | int | 18–35 |
-| Gender | categorical | Male, Female |
-| Degree | categorical | B.Tech, MCA, BCA, B.Sc |
-| Branch | categorical | Civil, CSE, IT, ECE, ME |
-| CGPA | float | 4.0–10.0 |
-| Internships | int | 0–5 |
-| Projects | int | 0–10 |
-| Coding_Skills | int | 1–10 |
-| Communication_Skills | int | 1–10 |
-| Aptitude_Test_Score | int | 30–100 |
-| Soft_Skills_Rating | int | 1–10 |
-| Certifications | int | 0–5 |
-| Backlogs | int | 0–10 |
-| **Placement_Status** | **target** | **Placed / Not Placed** |
+## 📈 Data Dimensions & Features
 
-## 🚀 Setup & Run
+The model processes the following 14 structured endpoints for its regression and classification tasks:
+
+| Feature Dimension | Data Type | Permitted Range | Priority |
+|---|---|---|---|
+| Age | `int` | `18 - 35` | Standard |
+| Gender | `categorical` | `Male`, `Female` | Low |
+| Degree | `categorical` | `B.Tech`, `MCA`, `BCA`, `B.Sc` | High |
+| Branch | `categorical` | `CSE`, `IT`, `ECE`, `Civil`, `ME` | High |
+| CGPA | `float` | `4.0 - 10.0` | **Crucial** |
+| Internships | `int` | `0 - 5` | **Crucial** |
+| Projects | `int` | `0 - 10` | High |
+| Coding Skills | `int` | `1 - 10` | **Crucial** |
+| Communication | `int` | `1 - 10` | High |
+| Aptitude Score | `int` | `30 - 100` | Standard |
+| Soft Skills Rating| `int` | `1 - 10` | Standard |
+| Certifications | `int` | `0 - 5` | Standard |
+| Backlogs | `int` | `0 - 10` | High Penalty |
+| **Placement_Status**| **Target Label**| **Placed (1) / Not Placed (0)** | N/A |
+
+---
+
+## 🚀 Deployment & Operations
+
+### 1. Environment Preparation
+Ensure Python 3.9+ is installed, then set up the virtual environment:
+```bash
+cd backend
+python -m venv venv
+# Windows: venv\Scripts\activate | Mac/Linux: source venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 2. Model Training Pipeline
+The pipeline handles preprocessing (StandardScaler + OrdinalEncoder) and cross-validates via 5-Folds between Logistic Regression, Random Forest, and XGBoost based on optimal **ROC-AUC**.
 
 ```bash
-# 1. Install dependencies
-cd backend
-pip install -r requirements.txt
-
-# 2a. Use your real CSV (place it in backend/data/placement_data.csv)
-# 2b. OR generate synthetic data:
-python create_dataset.py
-
-# 3. Train the model
 python train.py
+```
+> *Artifact generation successful: `models/placement_model.pkl` created.*
 
-# 4. Start the API
+### 3. Service Instantiation
+Launch the ASGI FastAPI server using Uvicorn:
+```bash
 uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-## 🔌 API Endpoints
+---
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/v1/health` | GET | Health check |
-| `/api/v1/stats` | GET | Live prediction stats |
-| `/api/v1/predict` | POST | Get placement prediction |
+## 🔌 API Definitions
 
-### Example Request
+### `POST /api/v1/predict`
+Calculates and returns the deterministic probability of a placement outcome.
 
+**Example Request Payload:**
 ```json
-POST /api/v1/predict
 {
   "Age": 21,
   "Gender": "Male",
@@ -87,8 +110,7 @@ POST /api/v1/predict
 }
 ```
 
-### Example Response
-
+**Example Prediction Response:**
 ```json
 {
   "prediction": 1,
@@ -100,23 +122,7 @@ POST /api/v1/predict
 }
 ```
 
-## 🤖 ML Pipeline
-
-1. **Data** — 50k realistic student records (or use your real Kaggle CSV)
-2. **Preprocessing** — StandardScaler + OrdinalEncoder via sklearn ColumnTransformer
-3. **Models Evaluated** — Logistic Regression, Random Forest, XGBoost (5-fold CV)
-4. **Selection** — Best by ROC-AUC, then GridSearchCV fine-tuning
-5. **CV Results** (on synthetic 50k dataset):
-   - Logistic Regression: Acc=89.4% | F1=93.7% | **AUC=90.1%** ← Winner
-   - Random Forest: Acc=89.0% | F1=93.5% | AUC=89.8%
-   - XGBoost: Acc=89.1% | F1=93.5% | AUC=89.8%
-
-> **With your real dataset** (50k rows from Kaggle), XGBoost typically achieves higher AUC.
-
-## 🔄 Using Your Real CSV
-
-Just replace `backend/data/placement_data.csv` with your Kaggle CSV and re-run:
-```bash
-python train.py
-```
-The CSV must have these columns: `Student_ID`, `Age`, `Gender`, `Degree`, `Branch`, `CGPA`, `Internships`, `Projects`, `Coding_Skills`, `Communication_Skills`, `Aptitude_Test_Score`, `Soft_Skills_Rating`, `Certifications`, `Backlogs`, `Placement_Status`
+---
+<div align="center">
+  <p>Engineered for the Oralytics AI Platform.</p>
+</div>
