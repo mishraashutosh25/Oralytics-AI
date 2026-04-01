@@ -23,7 +23,10 @@ import QuestionBank from './pages/QuestionBank'
 import MySessions from './pages/MySessions'
 import Blog from './pages/Blog'
 import ApiDocs from './pages/ApiDocs'
-export const ServerURL = "http://localhost:8080"
+
+// Uncomment below for local development:
+// export const ServerURL = "http://localhost:8080"
+export const ServerURL = "https://oralytics-ai-server.onrender.com"
 
 function ScrollToTop() {
   const { pathname } = useLocation();
