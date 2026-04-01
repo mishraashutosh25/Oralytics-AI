@@ -8,6 +8,8 @@
   [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
   [![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
   [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+
+  <h3><a href="https://oralytics-ai.vercel.app">🔴 Live Demo Website</a></h3>
 </div>
 
 <br />
@@ -49,9 +51,9 @@ Our platform follows a robust Microservices-like pattern:
 3.  **Machine Learning Service:** FastAPI + Scikit-Learn/XGBoost (Deployed on Render)
 4.  **LLM / AI Engine:** Integration with OpenRouter/Gemini for low-latency reasoning
 
-<div align="center">
-  <img src="URL_TO_SYSTEM_ARCHITECTURE_DIAGRAM" alt="Architecture Flow" width="80%">
-</div>
+| Unified Architecture Flow | System Data Flow Diagram (DFD) |
+| :-------------------------: | :--------------------------: |
+| <img src="docs/screenshots/architecture.jpg" alt="Architecture Flow" width="100%"> | <img src="docs/screenshots/dataflow.jpg" alt="Data Flow" width="100%"> |
 
 ---
 
@@ -133,13 +135,19 @@ uvicorn app:app --reload
 
 ---
 
-## 👨‍💻 Development Team
+## 👨‍💻 Development Team & Author
 
-Developed as a Final Year Capstone Project by:
-- **Yash Mishra** - Backend Architecture, Architecture Setup, & AI Implementations
+This platform was engineered and built from scratch as an advanced Capstone Project. 
+
+**Yash Mishra**
+*Full Stack / AI Engineer*
+*   **Role:** Lead Developer, Systems Architecture, AI Integrations & Deployment.
+*   **LinkedIn:** [linkedin.com/in/yash-mishra-ai](#) *(Insert your link here)*
+*   **Github:** [@mishraashutosh25](https://github.com/mishraashutosh25)
+*   **Portfolio:** [yashmishra.dev](#) *(Insert your link here)*
 
 ---
 
 <div align="center">
-  <p>Made with ❤️ for the Developer & Student Community.</p>
+  <p>Engineered with ❤️ by Yash Mishra for the Developer & Student Community.</p>
 </div>
