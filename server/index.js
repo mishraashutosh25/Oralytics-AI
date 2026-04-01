@@ -11,6 +11,7 @@ import analyticsRouter from './routes/analytics.route.js'
 import notificationRouter from './routes/notification.route.js'
 import paymentRouter from './routes/payment.route.js'
 import creditRouter from './routes/credit.route.js'
+import adminRouter from './routes/admin.route.js'
 
 dotenv.config()
 
@@ -44,6 +45,7 @@ app.use("/api/analytics",      analyticsRouter)
 app.use("/api/notifications",  notificationRouter)
 app.use("/api/payment",        paymentRouter)
 app.use("/api/credits",        creditRouter)
+app.use("/api/admin",          adminRouter)
 
 const PORT = process.env.PORT || 8080
 

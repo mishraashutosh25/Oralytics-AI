@@ -24,6 +24,7 @@ import MySessions from './pages/MySessions'
 import Blog from './pages/Blog'
 import ApiDocs from './pages/ApiDocs'
 import InterviewReport from './pages/InterviewReport'
+import AdminDashboard from './pages/AdminDashboard'
 
 // Uncomment below for local development:
 // export const ServerURL = "http://localhost:8080"
@@ -81,6 +82,7 @@ function App() {
       <Route path='/question-bank'   element={<QuestionBank />} />
       <Route path='/my-sessions'   element={<MySessions />} />
       <Route path='/report/:id'      element={<InterviewReport />} />
+      <Route path='/admin'         element={<AdminDashboard />} />
       <Route path='/credits'         element={<Pricing />} />
       <Route path='/auth'          element={<Auth />} />
       </Routes>
