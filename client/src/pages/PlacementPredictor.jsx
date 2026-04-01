@@ -371,7 +371,7 @@ export default function PlacementPredictor() {
     setResult(null);
 
     try {
-      const BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
+      const BASE = import.meta.env.VITE_API_URL || "https://oralytics-backend.onrender.com";
       const res  = await fetch(`${BASE}/api/placement/predict`, {
         method:  "POST",
         credentials: "include",
