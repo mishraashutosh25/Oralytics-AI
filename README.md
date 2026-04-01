@@ -31,7 +31,6 @@
 
 ## 📸 Screenshots
 
-*(Replace the placeholder links below with your actual screenshot URLs)*
 
 | Role-based AI Interview 🧠 | Premium Feedback Report 📈 |
 | :-------------------------: | :--------------------------: |
