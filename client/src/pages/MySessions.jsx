@@ -188,16 +188,23 @@ export default function MySessions() {
                         Ref #{session._id.slice(-6).toUpperCase()}
                       </span>
                       
-                      <button onClick={() => handleDelete(session._id)} disabled={deletingId === session._id}
-                        className='flex items-center gap-2 px-3 py-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer text-[11px] font-bold uppercase tracking-wider'
-                      >
-                        {deletingId === session._id ? (
-                          <div className='w-3 h-3 border-2 border-red-400/30 border-t-red-400 rounded-full animate-spin' />
-                        ) : (
-                          <BsTrashFill size={12} />
-                        )}
-                        Delete Record
-                      </button>
+                      <div className='flex items-center gap-3'>
+                        <button onClick={() => navigate(`/report/${session._id}`)}
+                          className='flex items-center gap-2 px-4 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 hover:text-indigo-300 transition-all cursor-pointer text-[11px] font-bold uppercase tracking-wider'>
+                          View Full Report
+                        </button>
+                        
+                        <button onClick={() => handleDelete(session._id)} disabled={deletingId === session._id}
+                          className='flex items-center gap-2 px-3 py-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer text-[11px] font-bold uppercase tracking-wider'
+                        >
+                          {deletingId === session._id ? (
+                            <div className='w-3 h-3 border-2 border-red-400/30 border-t-red-400 rounded-full animate-spin' />
+                          ) : (
+                            <BsTrashFill size={12} />
+                          )}
+                          Delete
+                        </button>
+                      </div>
                     </div>
 
                   </motion.div>

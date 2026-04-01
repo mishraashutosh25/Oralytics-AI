@@ -742,3 +742,22 @@ export const deleteSession = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to delete session' })
   }
 }
+
+// ── Get Single Session Details for Report Page ──────────────────────────────────
+export const getSessionById = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.userId
+    const { id } = req.params
+
+    const session = await Interview.findOne({ _id: id, userId }).lean()
+
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Session not found' })
+    }
+
+    return res.json({ success: true, session })
+  } catch (err) {
+    console.error('getSessionById error:', err)
+    return res.status(500).json({ success: false, message: 'Failed to fetch session details' })
+  }
+}
