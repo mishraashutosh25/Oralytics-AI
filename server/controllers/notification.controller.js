@@ -104,14 +104,14 @@ export const checkAndCreateReminders = async (req, res) => {
         : null
 
       if (daysSince === null || daysSince >= 3) {
-        // Prevent spam: only one active practice unread reminder at a time
-        const activeReminder = await Notification.findOne({
+        // Prevent spam: only one reminder every 3 days regardless of whether it was read
+        const recentReminder = await Notification.findOne({
           userId,
           type: "session_reminder",
-          isRead: false
+          createdAt: { $gte: new Date(now.getTime() - 3 * 86400000) }
         })
 
-        if (!activeReminder) {
+        if (!recentReminder) {
           const isHighPriority = daysSince !== null && daysSince >= 7
           const title = isHighPriority ? "Your Interview Skills Wait For No One 🚀" : "Keep Your Streak Alive 🎯"
           const msg = daysSince === null
@@ -196,8 +196,12 @@ export const checkAndCreateReminders = async (req, res) => {
     // 4. Smart System Prompts
     // ==================================
     if (!user.resumeUrl) {
-      const activeMissingResume = await Notification.findOne({ userId, type: "system", title: { $regex: /resume/i }, isRead: false })
-      if (!activeMissingResume) {
+      // Prevent spam: only remind about resume once every 7 days
+      const recentMissingResume = await Notification.findOne({ 
+        userId, type: "system", title: { $regex: /resume/i },
+        createdAt: { $gte: new Date(now.getTime() - 7 * 86400000) }
+      })
+      if (!recentMissingResume) {
         const n = await createNotification({
           userId, type: "system", priority: "medium",
           title: "Missing ATS Context 📎",
