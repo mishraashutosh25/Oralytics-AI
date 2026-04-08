@@ -142,5 +142,5 @@ Developed as a Final Year Capstone Project by:
 ---
 
 <div align="center">
-  <p>Engineered with ❤️ for the Developer & Student Community.</p>
+  <p>Engineered with for the Developer & Student Community.</p>
 </div>
